@@ -2,3 +2,4 @@ wdir/
 examples/analysis/*/sliced_trajectories
 examples/analysis/*/protein_trajectories
 examples/analysis/*/__pycache__
+**/__pycache__/
