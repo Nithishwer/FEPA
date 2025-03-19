@@ -9,7 +9,7 @@ from utils.file_utils import load_config
 from utils.md_utils import annotate_binding_pocket, save_universes
 
 # Configure logging
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicCon87fig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 def main():
     """Main function to extract binding pocket trajectories based on config."""

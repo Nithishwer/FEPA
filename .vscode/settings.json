@@ -1,0 +1,13 @@
+{
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true
+    },
+
+    "python.languageServer": "Pylance",
+    "pylint.args": [
+        "\"pylint.args\":[\"--disable=E0401,E0611\"]"
+    ],
+    "terminal.integrated.cwd": ""
+}
+

@@ -1,6 +1,7 @@
 {
     "base_path": "/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1",
     "vanilla_path_template": "/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1/OX2_{CMP_NAME}/vanilla_rep_{REP_NO}",
+    "abfe_window_path_template": "/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1/OX2_{CMP_NAME}/abfe_van{REP_NO}_hrex_r{ABFE_REP_NO}/complex/{LEG_WINDOW}/{STAGE}",
     "vanilla_path_template_old": "/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1/OX2_{CMP_NAME}/vanilla",
     "apo_path_template": "/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1/apo_OX2_r{REP_NO}",
     "compounds": ["42922","43289","43367","43612","43703","43796","43929","46433","46726","46831","46853","46892","46905","47311","47594","47816","47821","47848","48083","48732","48845","48951","49599","49847","49860","51964","52542"],
