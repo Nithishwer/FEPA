@@ -112,7 +112,6 @@ def main():
         )
 
         # Visualization
-
         dimred_visualizer = DimRedVisualizer(
             projection_df=pca_projection_df_clustered, data_name="PCA"
         )
@@ -175,6 +174,12 @@ def main():
             ensemble2=ensemble_to_cluster[pair][1],
             feature_column_keyword="DIST",
             top_n=200,
+        )
+        top_features_df[:100].to_csv(
+            os.path.join(
+                apo_output_dir, f"top_features_{pair[0]}_{pair[1]}_sample.csv"
+            ),
+            index=False,
         )
 
         # Do PCA of top df

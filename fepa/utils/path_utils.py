@@ -157,3 +157,22 @@ def load_paths_for_apo(config: dict, bp_selection_string: str) -> dict:
             "bp_selection_string": bp_selection_string,
         }
     return path_dict
+
+
+def load_paths_for_memento_equil(
+    sim_path_template: str, bp_selection_string: str
+) -> dict:
+    """Loads MD trajectory paths for memento equil from config file"""
+    path_dict = {}
+    for window in range(24):
+        sim_folder = f"sim{window}"
+        path_dict[sim_folder] = {
+            "pdb": os.path.join(
+                sim_path_template.format(SIM_FOLDER=sim_folder), "npt.gro"
+            ),
+            "xtc": os.path.join(
+                sim_path_template.format(SIM_FOLDER=sim_folder), "prod.xtc"
+            ),
+            "bp_selection_string": bp_selection_string,
+        }
+    return path_dict

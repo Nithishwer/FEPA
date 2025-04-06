@@ -100,13 +100,16 @@ class PCADimReducer(BaseDimReducer):
         with open(save_path, "wb") as f:
             pickle.dump(self.pca, f)
 
-    def load_pca(save_path):
+    def load_pca(self, save_path, feature_column_keyword="DIST"):
         """Load the PCA object from a file."""
         try:
             with open(save_path, "rb") as f:
                 self.pca = pickle.load(f)
             print(f"PCA object loaded successfully from {save_path}")
-            return pca
+            self.feature_only_df = self.feature_df.filter(
+                regex=feature_column_keyword, axis=1
+            )
+            return self.pca
         except (FileNotFoundError, pickle.PickleError) as e:
             print(f"Error loading PCA object: {e}")
             return None
