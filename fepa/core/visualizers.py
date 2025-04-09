@@ -454,14 +454,14 @@ def sort_ensemble_by_pc(
     #  Todo: Fix save name and path here currently saves as something.xtc_somthing.xtc
     """
     logging.info("Sorting ensembles along PCA projection %d...", projection_num)
-    gro_file = ensemble_handler.path_dict[ensemble]["pdb"]
+    tpr_file = ensemble_handler.path_dict[ensemble]["tpr"]
     xtc_file = ensemble_handler.path_dict[ensemble]["xtc"]
     # Subset feature_df to only include the ensemble of interest
     ensemble_feature_df = feature_df[feature_df["ensemble"] == ensemble]
     ensemble_features = ensemble_feature_df.filter(regex=feature_column_keyword).values
     _ = sort_traj_along_pc(
         data=ensemble_features,
-        top=gro_file,
+        top=tpr_file,
         trj=xtc_file,
         out_name=save_path,
         pca=pca,
@@ -520,12 +520,14 @@ def plot_jsd_histograms(
     # Get top indices
     top_jsd_indices = np.argsort(jsd_values)[-top_n:]
 
+    # Reverse the order of top_jsd_indices to go from max jsd to min
+    top_jsd_indices = top_jsd_indices[::-1]
+
     # Ensure js_entropies is a numpy array
     jsd_values = np.array(jsd_values)
 
     # Get real resnames
     feature_name_list = np.array(relative_entropy_dict["name"])[top_jsd_indices]
-    resid_pair_list = get_resid_pairs_from_sdf_names(feature_name_list)
 
     rows = 5
     cols = 4
@@ -534,6 +536,8 @@ def plot_jsd_histograms(
     for i, idx in enumerate(top_jsd_indices):
         col_grp1, col_grp2, bins = histograms[idx]
         if restr_u1_dict is not None and restr_u2_dict is not None:
+            # Get the corresponding restraint values
+            resid_pair_list = get_resid_pairs_from_sdf_names(feature_name_list)
             # Get Restraints
             restr_u1 = restr_u1_dict[resid_pair_list[i]]
             restr_u2 = restr_u2_dict[resid_pair_list[i]]
@@ -596,7 +600,7 @@ def plot_jsd_histograms(
         axes[i].legend()
 
     # Hide any empty subplots
-    for j in range((len(top_jsd_indices)) + 1, len(axes)):
+    for j in range((len(top_jsd_indices)), len(axes)):
         fig.delaxes(axes[j])
     plt.tight_layout()
     if save_path:
@@ -618,6 +622,9 @@ def plot_eigenvalues(pca_object, n_components, save_path=None):
 def plot_pca_components(
     pca_object, feature_df, num: int, save_path=None, feature_column_keyword="DIST"
 ):
+    """
+    This does not work with a lot of features. Check why -> TODO
+    """
     """
     Plot the PCA components.
     """

@@ -1,0 +1,37 @@
+title                    = Energy Minimization
+define                   = ;-DFLEXIBLE
+
+; Run parameters
+integrator               = steep
+nsteps                   = 500000 ; Should take 50-60k steps    
+emtol                    = 2000
+
+; Output control
+nstxout                  = 0
+nstvout                  = 0
+nstlog                   = 1000    
+nstenergy                = 1000
+nstxout-compressed       = 1000
+compressed-x-precision   = 1000
+
+; Neighborsearching
+cutoff-scheme            = Verlet
+nstlist                  = 10                        ; 20 in COARSE_GRAINED
+rlist                    = 1.2
+pbc                      = xyz
+verlet-buffer-tolerance  = 0.005
+constraints              = none 
+constraint_algorithm     = lincs
+
+; Electrostatics and VDW
+; if fatal error: perturbed non-bonded pair interaction beyond pair list cutoff,  
+; refer https://gromacs.bioexcel.eu/t/perturbed-non-bonded-pair-interaction-beyond-the-pair-list-cutoff/4596
+rvdw                     = 1.2
+rcoulomb                 = 1.2
+coulombtype              = PME
+;coulomb-modifier        = Potential-shift-Verlet ; not using coulomb-modifier with PME
+;epsilon-r               = 15
+vdw_type                 = cutoff
+vdw-modifier             = Potential-shift-Verlet
+refcoord_scaling	 = all
+

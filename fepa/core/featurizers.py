@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 import pandas as pd
 from pensa.features import read_atom_self_distances
+from fepa.utils.BAT_utils import read_BAT
 from fepa.core.ensemble_handler import EnsembleHandler
 
 
@@ -63,17 +64,49 @@ class SelfDistanceFeaturizer(BaseFeaturizer):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
-            pdb_path = self.ensemble_handler.path_dict[ensemble]["pdb"]
+            tpr_path = self.ensemble_handler.path_dict[ensemble]["tpr"]
             xtc_path = self.ensemble_handler.path_dict[ensemble]["xtc"]
+            pp_trans = self.ensemble_handler.make_ensemble_pp_trans(ensemble)
+
             bp_selection_string = self.ensemble_handler.path_dict[ensemble][
                 "bp_selection_string"
             ]
             name, data = read_atom_self_distances(
-                pdb_path,
+                tpr_path,
                 xtc_path,
                 selection=bp_selection_string,
                 step=1,
                 naming="plain",
+                transformations=pp_trans,
+            )
+            ensemble_feature_df = pd.DataFrame(data, columns=name)
+            ensemble_feature_df["timestep"] = (
+                self.ensemble_handler.get_timestep_from_universe(key=ensemble)
+            )
+            ensemble_feature_df["ensemble"] = ensemble
+            feature_dfs.append(ensemble_feature_df)
+
+        self.feature_df = pd.concat(feature_dfs, ignore_index=True)
+
+
+class BATFeaturizer(BaseFeaturizer):
+    """Class for featurizing torsions of selected atoms"""
+
+    def __init__(self, ensemble_handler: EnsembleHandler, sel: str):
+        super().__init__(ensemble_handler)
+        self.feature_type = "Torsions"
+        self.selection_string = sel
+
+    def featurize(self):
+        feature_dfs = []
+        for ensemble in self.ensemble_handler.path_dict.keys():
+            logging.info("Featurizing %s...", ensemble)
+            tpr_path = self.ensemble_handler.path_dict[ensemble]["tpr"]
+            xtc_path = self.ensemble_handler.path_dict[ensemble]["xtc"]
+            name, data = read_BAT(
+                tpr_path,
+                xtc_path,
+                sel=self.selection_string,
             )
             ensemble_feature_df = pd.DataFrame(data, columns=name)
             ensemble_feature_df["timestep"] = (

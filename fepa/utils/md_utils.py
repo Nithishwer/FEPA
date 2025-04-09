@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Dict
 import matplotlib.pyplot as plt
 from MDAnalysis.analysis import align, rms
+from MDAnalysis import transformations
 import MDAnalysis as mda
 from fepa.utils.feature_utils import get_resid_pairs_from_sdf_names
 
@@ -266,6 +267,33 @@ def generate_gmx_restraints_file(u, rmsf_dict, a=1, output_file="ca_restraints.i
             f.write(
                 f"{atom_index:<5}  {2:<10}  {1:<5}  {restraint_value:<8.3f}  {1000:<5}\n"
             )
+
+
+def write_traj_without_PBC_jumps(
+    gro_path: str,
+    xtc_path: str,
+    output_gro_path: str = "output.gro",
+    output_xtc_path: str = "output.xtc",
+    centering_selection_string: str = "protein",
+    saving_selection_string: str = "all",
+):
+    """
+    Remove periodic boundary conditions from a trajectory.
+    Ideally, dont rewrite the original trajectory, but create a new one.
+    I rewrite because I am recklesssss
+    """
+    u = mda.Universe(gro_path, xtc_path)
+    centering_selection = u.select_atoms(centering_selection_string)
+    ag = u.select_atoms(saving_selection_string)
+    # we will use mass as weights for the center calculation
+    workflow = (
+        transformations.unwrap(ag),
+        transformations.center_in_box(centering_selection, center="mass"),
+        transformations.wrap(ag, compound="fragments"),
+    )
+    u.trajectory.add_transformations(*workflow)
+    ag.write(output_gro_path)
+    ag.write(output_xtc_path, frames="all")
 
 
 #     # print(f'{pca1.shape[0]}')

@@ -1,10 +1,14 @@
 import os
 import gromacs
+import pandas as pd
 import logging
 from fepa.utils.steus_utils import (
     write_temp_MDP,
     get_window_weights,
     setup_steus,
+    extract_temp_at_marker,
+    extract_time_at_marker,
+    filter_colvar_pandas,
 )
 
 
@@ -89,34 +93,62 @@ class steus_umbrella_sampling_workflow:
 
     def __init__(
         self,
-        wdir_paths,
-        plumed_paths,
+        wdir_path,
+        plumed_path,
         submission_script_template_arr,
         template_mdp,
         temp_weights,
         temp_lambdas,
         steus_folder_name="steus_v1",
+        n_windows=24,
     ):
-        self.wdir_paths = wdir_paths
-        self.plumed_paths = plumed_paths
+        logging.info("Initializing steus_umbrella_sampling_workflow...")
+        self.wdir_path = wdir_path
+        self.plumed_path = plumed_path
         self.submission_script_template_arr = submission_script_template_arr
         self.template_mdp = template_mdp
         self.temp_weights = temp_weights
         self.temp_lambdas = temp_lambdas
         self.steus_folder_name = steus_folder_name
+        self.n_windows = n_windows
 
     def setup_simulations(self, exist_ok=False):
-        for wdir_path, plumed_path in zip(self.wdir_paths, self.plumed_paths):
-            setup_steus(
-                wdir_path,
-                plumed_path,
-                self.submission_script_template_arr,
-                self.template_mdp,
-                self.temp_weights,
-                self.temp_lambdas,
-                steus_name=self.steus_folder_name,
-                exist_ok=exist_ok,
-            )
+        setup_steus(
+            self.wdir_path,
+            self.plumed_path,
+            self.submission_script_template_arr,
+            self.template_mdp,
+            self.temp_weights,
+            self.temp_lambdas,
+            steus_name=self.steus_folder_name,
+            exist_ok=exist_ok,
+        )
+
+    def extract_ground_state_colvar(self):
+        logging.info("Extracting ground state colvar data...")
+        # For each window
+        for i in range(self.n_windows):
+            logging.info(f"Processing simulation {i}")
+            filename = f"{self.wdir_path}/{self.steus_folder_name}/sim{i}/sim{i}.log"  # Replace with the actual filename
+            # Extract temperature and time values from the gmx log file
+            temperatures = extract_temp_at_marker(filename)
+            times = extract_time_at_marker(filename)
+
+            logging.info(f"Extracted {len(temperatures)} temperature values.")
+            logging.info(f"Extracted {len(times)} time values.")
+
+            # Create a DataFrame from the extracted data
+            df = pd.DataFrame({"Time (ps)": times, "Temperature (K)": temperatures})
+
+            # Save the DataFrame to a CSV file
+            temp_file_name = filename.replace(".log", "_temp.csv")
+            df.to_csv(temp_file_name, index=False)
+            logging.info(f"DataFrame saved to {temp_file_name}.")
+
+            colvar_file = f"{self.wdir_path}/{self.steus_folder_name}/sim{i}/COLVAR"
+
+            # Filter the colvar file for the ground state temperature
+            filter_colvar_pandas(colvar_file, temp_file_name)
 
     def analyse_simulations(self):
         """

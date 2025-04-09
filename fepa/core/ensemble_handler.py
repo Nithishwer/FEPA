@@ -5,6 +5,7 @@ This module contains the EnsembleHandler class, used to load and handle MD ensem
 import warnings
 from typing import Dict
 import MDAnalysis as mda
+import MDAnalysis.transformations as trans
 import logging
 
 warnings.filterwarnings("ignore")  # Suppress MDAnalysis warnings
@@ -33,10 +34,10 @@ class EnsembleHandler:
         Makes and stores MDAnalysis universes from the path dictionary.
         """
         for key in self.path_dict.keys():
-            pdb_path = self.path_dict[key]["pdb"]
+            tpr_path = self.path_dict[key]["tpr"]
             xtc_path = self.path_dict[key]["xtc"]
             bp_selection_string = self.path_dict[key]["bp_selection_string"]
-            self.universe_dict[key] = mda.Universe(pdb_path, xtc_path)
+            self.universe_dict[key] = mda.Universe(tpr_path, xtc_path)
             bp_atoms = self.universe_dict[key].select_atoms(bp_selection_string)
             bp_atoms.residues.segments = self.universe_dict[key].add_Segment(segid="BP")
             non_bp_atoms = self.universe_dict[key].select_atoms("not segid BP")
@@ -96,3 +97,26 @@ class EnsembleHandler:
             save_path, n_atoms=self.universe_dict[ensemble].atoms.n_atoms
         ) as writer:
             writer.write(self.universe_dict[ensemble].atoms)
+
+    def make_ensemble_pp_trans(self, ensemble: str) -> list:
+        """
+        Make transformations for unwrapping the trajectory, centering
+        the protein and wrapping the rest with whole fragments with
+        the first ensemble
+        """
+        tpr_path = self.path_dict[ensemble]["tpr"]
+        xtc_path = self.path_dict[ensemble]["xtc"]
+
+        # Load trajectory
+        u = mda.Universe(tpr_path, xtc_path)
+        protein = u.select_atoms("protein")
+        not_protein = u.select_atoms("not protein")
+
+        # Make list of transformations
+        transformations = [
+            trans.unwrap(protein),
+            trans.center_in_box(protein, wrap=True),
+            trans.wrap(not_protein),
+        ]
+
+        return transformations

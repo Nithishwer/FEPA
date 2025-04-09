@@ -3,7 +3,9 @@
 import os
 
 
-def load_paths_for_compound(config: dict, cmp: str, bp_selection_string: str) -> dict:
+def load_paths_for_compound(
+    config: dict, cmp: str, bp_selection_string: str, apo=True
+) -> dict:
     """Loads MD trajectory paths for a given compound."""
     path_dict = {}
     for van_rep_no in [1, 2, 3]:
@@ -24,6 +26,14 @@ def load_paths_for_compound(config: dict, cmp: str, bp_selection_string: str) ->
                 ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
                 "prod.xtc",
             ),
+            "tpr": os.path.join(
+                config[
+                    "vanilla_path_template_old"
+                    if van_rep_no == 1
+                    else "vanilla_path_template"
+                ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
+                "prod.tpr",
+            ),
             "bp_selection_string": bp_selection_string,
         }
         path_dict[f"{cmp}_nvt"] = {
@@ -43,27 +53,41 @@ def load_paths_for_compound(config: dict, cmp: str, bp_selection_string: str) ->
                 ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
                 "nvt.xtc",
             ),
-            "bp_selection_string": bp_selection_string,
-        }
-    for van_rep_no in [1, 2, 3]:
-        path_dict[f"apo_{van_rep_no}"] = {
-            "pdb": os.path.join(
-                config["apo_path_template"].format(REP_NO=van_rep_no), "npt.gro"
-            ),
-            "xtc": os.path.join(
-                config["apo_path_template"].format(REP_NO=van_rep_no), "prod.xtc"
+            "tpr": os.path.join(
+                config[
+                    "vanilla_path_template_old"
+                    if van_rep_no == 1
+                    else "vanilla_path_template"
+                ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
+                "nvt.tpr",
             ),
             "bp_selection_string": bp_selection_string,
         }
+    if apo:
+        for van_rep_no in [1, 2, 3]:
+            path_dict[f"apo_{van_rep_no}"] = {
+                "pdb": os.path.join(
+                    config["apo_path_template"].format(REP_NO=van_rep_no), "npt.gro"
+                ),
+                "xtc": os.path.join(
+                    config["apo_path_template"].format(REP_NO=van_rep_no), "prod.xtc"
+                ),
+                "tpr": os.path.join(
+                    config["apo_path_template"].format(REP_NO=van_rep_no), "prod.tpr"
+                ),
+                "bp_selection_string": bp_selection_string,
+            }
     return path_dict
 
 
 def load_abfe_paths_for_compound(
+    # TODO: Need to change this not have old and new vanilla paths for van1
     config: dict,
     cmp: str,
     bp_selection_string: str,
     van_list: list[str],
     leg_window_list: list[str],
+    apo=True,
 ) -> dict:
     """Loads MD trajectory paths for a given compound."""
     path_dict = {}
@@ -90,6 +114,16 @@ def load_abfe_paths_for_compound(
                     ),
                     "traj_comp.xtc",
                 ),
+                "tpr": os.path.join(
+                    config["abfe_window_path_template"].format(
+                        CMP_NAME=cmp,
+                        REP_NO=van_rep_no,
+                        STAGE="prod",
+                        ABFE_REP_NO=1,
+                        LEG_WINDOW=leg_window,
+                    ),
+                    "topol.tpr",
+                ),
                 "bp_selection_string": bp_selection_string,
             }
             path_dict[f"{cmp}_nvt"] = {
@@ -108,6 +142,14 @@ def load_abfe_paths_for_compound(
                         else "vanilla_path_template"
                     ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
                     "nvt.xtc",
+                ),
+                "tpr": os.path.join(
+                    config[
+                        "vanilla_path_template_old"
+                        if van_rep_no == 1
+                        else "vanilla_path_template"
+                    ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
+                    "nvt.tpr",
                 ),
                 "bp_selection_string": bp_selection_string,
             }
@@ -128,18 +170,30 @@ def load_abfe_paths_for_compound(
                     ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
                     "prod.xtc",
                 ),
+                "tpr": os.path.join(
+                    config[
+                        "vanilla_path_template_old"
+                        if van_rep_no == 1
+                        else "vanilla_path_template"
+                    ].format(CMP_NAME=cmp, REP_NO=van_rep_no),
+                    "prod.tpr",
+                ),
                 "bp_selection_string": bp_selection_string,
             }
-    for van_rep_no in [1, 2, 3]:
-        path_dict[f"apo_{van_rep_no}"] = {
-            "pdb": os.path.join(
-                config["apo_path_template"].format(REP_NO=van_rep_no), "npt.gro"
-            ),
-            "xtc": os.path.join(
-                config["apo_path_template"].format(REP_NO=van_rep_no), "prod.xtc"
-            ),
-            "bp_selection_string": bp_selection_string,
-        }
+    if apo:
+        for apo_rep_no in [1, 2, 3]:
+            path_dict[f"apo_{apo_rep_no}"] = {
+                "pdb": os.path.join(
+                    config["apo_path_template"].format(REP_NO=apo_rep_no), "npt.gro"
+                ),
+                "xtc": os.path.join(
+                    config["apo_path_template"].format(REP_NO=apo_rep_no), "prod.xtc"
+                ),
+                "tpr": os.path.join(
+                    config["apo_path_template"].format(REP_NO=apo_rep_no), "prod.tpr"
+                ),
+                "bp_selection_string": bp_selection_string,
+            }
     return path_dict
 
 
