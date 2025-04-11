@@ -110,6 +110,73 @@ def process_colvars(
     os.chdir(cwd)  # Change back to the original directory
 
 
+def analyse_us_hist(us_path, range, colvar_filename="COLVAR", label="steus_v1"):
+    # Navigate to memento_dir/wdir/boxes
+    logging.info(f"Analysing US histograms in {us_path}")
+
+    # Get the list of folder names inside 'reus'
+    us_folders = [
+        f
+        for f in os.listdir(us_path)
+        if os.path.isdir(os.path.join(us_path, f)) and f.startswith("sim")
+    ]
+    logging.info(f"Found folders: {us_folders}")
+
+    # Initialize a list to store folder names and corresponding means
+    mean_values = []
+
+    # Create a figure for the histograms
+    plt.figure(figsize=(20, 12))
+
+    # Loop through each folder
+    for folder in us_folders:
+        logging.info(f"Processing folder: {folder}")
+
+        # Construct the path to the colvar file
+        colvar_path = os.path.join(
+            us_path, folder, colvar_filename
+        )  # Path to colvar file
+
+        # Read the colvar file, skipping the first line with '#! FIELDS time CV'
+        data = pd.read_csv(colvar_path, sep="\s+", skiprows=1, names=["time", "CV"])
+
+        # Calculate the mean of 'CV'
+        mean_a_eig_1 = data["CV"].mean()
+
+        # Append folder name and mean to the list
+        mean_values.append({"folder": folder, "mean": mean_a_eig_1})
+
+        # Plot the histogram for 'CV' on the same figure with some transparency and style
+        plt.hist(data["CV"], bins=400, alpha=0.6, label=folder, range=range)
+
+    # Use the basename of us_path as the plot title
+    plot_title = label
+    plt.title(f"Histograms of CV Across Folders - {plot_title}", fontsize=16)
+
+    # Add labels for axes
+    plt.xlabel("CV", fontsize=12)
+    plt.ylabel("Frequency", fontsize=12)
+
+    # Add a legend with a nice font size
+    plt.legend(title="Folders", fontsize=10, title_fontsize="12")
+
+    # Add grid lines to the plot
+    plt.grid(True, linestyle="--", alpha=0.7)
+
+    # Save the combined histogram plot
+    plt.savefig(os.path.join(us_path, f"{plot_title}_combined_histogram.png"), dpi=300)
+    logging.info(
+        f"Combined histogram saved as {os.path.join(us_path, f'{plot_title}_combined_histogram.png')}"
+    )
+    plt.close()
+
+    # Save the mean values to a CSV file
+    mean_df = pd.DataFrame(mean_values)
+    mean_df.to_csv(os.path.join(us_path, "mean_values.csv"), index=False)
+
+    logging.info(f"Mean values saved to {os.path.join(us_path, 'mean_values.csv')}")
+
+
 def parse_steus_plumed_file(plumed_path):
     """
     Parses the plumed.dat file to extract KAPPA and AT values.

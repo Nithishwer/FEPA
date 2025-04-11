@@ -116,10 +116,11 @@ def main():
     # )
 
     # Clustering
-    no_of_binding_modes = find_optimal_clusters_bic(
-        dimreducer.get_pca_projection_df()["PC1"].tolist(),
-        save_path=os.path.join(analysis_output_dir, "bic_method.png"),
-    )
+    # no_of_binding_modes = find_optimal_clusters_bic(
+    #     dimreducer.get_pca_projection_df()["PC1"].tolist(),
+    #     save_path=os.path.join(analysis_output_dir, "bic_method.png"),
+    # )
+    no_of_binding_modes = 4
     logging.info(
         "Number of binding modes as guessed from PC1 bic: %s", no_of_binding_modes
     )
@@ -145,45 +146,45 @@ def main():
     )
     feature_df["cluster"] = projection_df_w_clusters["cluster"]
     clusters = projection_df_w_clusters["cluster"].unique()
-    # Loop over all pairs of elements in clusters
-    for i in range(len(clusters)):
-        for j in range(i + 1, len(clusters)):
-            cluster_1 = clusters[i]
-            cluster_2 = clusters[j]
-            logging.info("Computing JSD for clusters %s and %s", cluster_1, cluster_2)
-            relative_entropy_dict = compute_relative_entropy(
-                feature_df=feature_df,
-                key="cluster",
-                ensemble1=cluster_1,
-                ensemble2=cluster_2,
-                num_bins=50,
-                feature_column_keyword="BAT",
-            )
-            histograms = compute_histograms(
-                feature_df=feature_df,
-                key="cluster",
-                value_1=cluster_1,
-                value_2=cluster_2,
-                num_bins=50,
-                feature_column_keyword="BAT",
-            )
-            plot_jsd_histograms(
-                relative_entropy_dict=relative_entropy_dict,
-                histograms=histograms,
-                save_path=os.path.join(
-                    analysis_output_dir, f"jsd_histograms_{cluster_1}_{cluster_2}.png"
-                ),
-            )
+    # # Loop over all pairs of elements in clusters
+    # for i in range(len(clusters)):
+    #     for j in range(i + 1, len(clusters)):
+    #         cluster_1 = clusters[i]
+    #         cluster_2 = clusters[j]
+    #         logging.info("Computing JSD for clusters %s and %s", cluster_1, cluster_2)
+    #         relative_entropy_dict = compute_relative_entropy(
+    #             feature_df=feature_df,
+    #             key="cluster",
+    #             ensemble1=cluster_1,
+    #             ensemble2=cluster_2,
+    #             num_bins=50,
+    #             feature_column_keyword="BAT",
+    #         )
+    #         histograms = compute_histograms(
+    #             feature_df=feature_df,
+    #             key="cluster",
+    #             value_1=cluster_1,
+    #             value_2=cluster_2,
+    #             num_bins=50,
+    #             feature_column_keyword="BAT",
+    #         )
+    #         plot_jsd_histograms(
+    #             relative_entropy_dict=relative_entropy_dict,
+    #             histograms=histograms,
+    #             save_path=os.path.join(
+    #                 analysis_output_dir, f"jsd_histograms_{cluster_1}_{cluster_2}.png"
+    #             ),
+    #         )
 
     # Plotting distribution of simulations across binding modes
 
     # Annotate the ensembles in dimred_df
     projection_df_w_clusters["sim_type"] = [
-        element
-        if "van" in element
-        else "abfe"
+        "abfe"
         if any(x in element for x in ["vdw", "coul", "rest"])
-        else "unknown"
+        else "nvt"
+        if "nvt" in element
+        else "van"
         for element in projection_df_w_clusters["ensemble"]
     ]
     projection_df_w_clusters.to_csv(
@@ -207,20 +208,22 @@ def main():
     )
 
     # Create the stacked bar chart
-    plt.figure(figsize=(14, 7), dpi=400)  # Increased DPI for higher resolution
+    plt.figure(figsize=(14, 7), dpi=300)  # Increased DPI for higher resolution
     sim_type_cluster_percentages.plot(kind="bar", stacked=True)
 
     # Set the title and labels
-    plt.title("Percentage of Clusters per Sim Type", fontsize=16)
+    plt.title("Percentage of torsion clusters per Sim Type", fontsize=16)
     plt.xlabel("Sim Type", fontsize=12)
     plt.ylabel("Percentage (%)", fontsize=12)
     plt.xticks(rotation=45, ha="right", fontsize=10)
     plt.yticks(fontsize=10)
-    plt.legend(title="Cluster", fontsize=10)
+    plt.legend(title="Torsion Cluster", fontsize=10, location="upper right")
     sns.despine()  # Remove top and right spines for a cleaner look
     plt.tight_layout()
     plt.savefig(
-        os.path.join(analysis_output_dir, "percentage_of_clusters_per_sim_type.png")
+        os.path.join(
+            analysis_output_dir, "percentage_of_torsion_clusters_per_sim_type.png"
+        )
     )
 
 
