@@ -155,6 +155,7 @@ class DimRedVisualizer:
         df = self.projection_df
         x_col = self.dimred_axes_names[0]
         y_col = self.dimred_axes_names[1]
+        logging.info(f"Plotting {x_col} vs {y_col}")
         title = f"2 Component {self.data_name}"
 
         if targets is None:

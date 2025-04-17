@@ -7,6 +7,8 @@ from typing import Dict
 import MDAnalysis as mda
 import MDAnalysis.transformations as trans
 import logging
+from MDAnalysis.analysis.hydrogenbonds.hbond_analysis import (
+  HydrogenBondAnalysis as HBA)
 
 warnings.filterwarnings("ignore")  # Suppress MDAnalysis warnings
 
@@ -100,6 +102,7 @@ class EnsembleHandler:
 
     def make_ensemble_pp_trans(self, ensemble: str) -> list:
         """
+        TOdo: sort this out
         Make transformations for unwrapping the trajectory, centering
         the protein and wrapping the rest with whole fragments with
         the first ensemble
