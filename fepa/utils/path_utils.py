@@ -205,6 +205,9 @@ def load_paths_for_apo(config: dict, bp_selection_string: str) -> dict:
             "pdb": os.path.join(
                 config["apo_path_template"].format(REP_NO=apo_rep_no), "npt.gro"
             ),
+            "tpr": os.path.join(
+                config["apo_path_template"].format(REP_NO=apo_rep_no), "prod.tpr"
+            ),
             "xtc": os.path.join(
                 config["apo_path_template"].format(REP_NO=apo_rep_no), "prod.xtc"
             ),

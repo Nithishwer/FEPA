@@ -5,7 +5,7 @@ import logging
 import shutil
 from pathlib import Path
 from fepa.utils.wham_utils import (
-    parse_steus_plumed_file,
+    parse_us_plumed_file,
     process_wham_path,
     plot_free_combined,
     analyse_us_hist,
@@ -21,7 +21,7 @@ from fepa.utils.steus_utils import (
 from fepa.utils.wham_utils import (
     create_colvar_chunks,
     generate_metadata,
-    parse_steus_plumed_file,
+    parse_us_plumed_file,
     plot_colvars,
     plot_histogram,
     process_colvars,
@@ -120,6 +120,7 @@ class steus_umbrella_sampling_workflow:
         end,
         steus_folder_name="steus_v1",
         n_windows=24,
+        wham_dirname="wham",
     ):
         logging.info("Initializing steus_umbrella_sampling_workflow...")
         self.wdir_path = wdir_path
@@ -131,7 +132,7 @@ class steus_umbrella_sampling_workflow:
         self.steus_folder_name = steus_folder_name
         self.n_windows = n_windows
         self.steus_path = os.path.join(self.wdir_path, self.steus_folder_name)
-        self.wham_path = os.path.join(self.wdir_path, self.steus_folder_name, "wham")
+        self.wham_path = os.path.join(self.wdir_path, self.steus_folder_name, wham_dirname)
         self.start = start
         self.end = end
 
@@ -200,7 +201,7 @@ class steus_umbrella_sampling_workflow:
         # Get kappa and at values from plumed files
         for i in range(24):
             plumed_file = os.path.join(self.steus_path, f"sim{i}", "steus_plumed.dat")
-            kappa, at = parse_steus_plumed_file(plumed_file)
+            kappa, at = parse_us_plumed_file(plumed_file)
             kappa_values.append(kappa)
             at_values.append(at)
         logging.info(f"Kappa values: {kappa_values}")
@@ -279,7 +280,7 @@ class steus_umbrella_sampling_workflow:
         # Get kappa and at values from plumed files
         for i in range(self.n_windows):
             plumed_file = os.path.join(self.steus_path, f"sim{i}", "steus_plumed.dat")
-            kappa, at = parse_steus_plumed_file(plumed_file)
+            kappa, at = parse_us_plumed_file(plumed_file)
             kappa_values.append(kappa)
             at_values.append(at)
 

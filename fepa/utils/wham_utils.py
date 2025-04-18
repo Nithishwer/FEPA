@@ -110,7 +110,7 @@ def process_colvars(
     os.chdir(cwd)  # Change back to the original directory
 
 
-def analyse_us_hist(us_path, range, colvar_filename="COLVAR", label="steus_v1"):
+def analyse_us_hist(us_path, range, colvar_filename=None,colvar_prefix=None, label="steus_v1"):
     # Navigate to memento_dir/wdir/boxes
     logging.info(f"Analysing US histograms in {us_path}")
 
@@ -132,11 +132,14 @@ def analyse_us_hist(us_path, range, colvar_filename="COLVAR", label="steus_v1"):
     for folder in us_folders:
         logging.info(f"Processing folder: {folder}")
 
-        # Construct the path to the colvar file
-        colvar_path = os.path.join(
-            us_path, folder, colvar_filename
-        )  # Path to colvar file
+        if colvar_filename is None:
+            colvar_path = os.path.join(
+            us_path, folder, f"{colvar_prefix}.{folder[3:]}")
+        else:
+            colvar_path = os.path.join(
+            us_path, folder, colvar_filename)
 
+        
         # Read the colvar file, skipping the first line with '#! FIELDS time CV'
         data = pd.read_csv(colvar_path, sep="\s+", skiprows=1, names=["time", "CV"])
 
@@ -177,7 +180,9 @@ def analyse_us_hist(us_path, range, colvar_filename="COLVAR", label="steus_v1"):
     logging.info(f"Mean values saved to {os.path.join(us_path, 'mean_values.csv')}")
 
 
-def parse_steus_plumed_file(plumed_path):
+
+
+def parse_us_plumed_file(plumed_path):
     """
     Parses the plumed.dat file to extract KAPPA and AT values.
 
@@ -211,6 +216,41 @@ def parse_steus_plumed_file(plumed_path):
                 break
 
     return kappa, at_value
+
+def parse_hrex_us_plumed_file(plumed_path):
+    """
+    Parses the plumed.dat file to extract KAPPA and AT values.
+
+    Returns:
+        kappa (float): The spring constant.
+        at_values (list of floats): The list of loc_win_min values.
+    """
+    kappa = None
+
+    with open(plumed_path, "r") as plumed_file:
+        for line in plumed_file:
+            # Remove comments and leading/trailing whitespace
+            line = line.split("#")[0].strip()
+            if "RESTRAINT" in line:
+                # Extract KAPPA and AT values
+                kappa_match = re.search(r"KAPPA\s*=\s*([\d\.Ee+-]+)", line)
+                at_match = re.search(r"AT=@replicas:([0-9.,\-eE]+)", line)
+                if kappa_match:
+                    kappa = float(kappa_match.group(1))  # No Convert to kcal/mol
+                else:
+                    raise ValueError("Error: KAPPA value not found in plumed.dat.")
+
+                if at_match:
+                    at_values_str = at_match.group(1)
+                    at_values = [float(x) for x in at_values_str.split(",")]
+                    
+                else:
+                    raise ValueError("Error: AT values not found in plumed.dat.")
+
+                # Assuming only one RESTRAINT line, break after parsing
+                break
+
+    return kappa, at_values
 
 
 def generate_metadata(
@@ -333,7 +373,7 @@ def plot_colvars(colvar_path="from_Archer", cutoff_time=5000, colvar_prefix="COL
 
 def create_colvar_chunks(
     wham_path, colvar_100_pct_path, chunk_size_percentage=100, direction="forward"
-):
+, overwrite= False):
     """
     Splits the colvar data files into chunks of a specified size.
 
@@ -350,9 +390,13 @@ def create_colvar_chunks(
     )
     # Define the chunk directory and copy colvar files into it
     chunk_path = f"{wham_path}/colvars_{chunk_size_percentage}_pct_{direction}"
-    if os.path.exists(chunk_path):
+    if os.path.exists(chunk_path) and overwrite== False:
         logging.info(f"Chunk directory '{chunk_path}' already exists, quitting")
         return 0
+    elif os.path.exists(chunk_path) and overwrite== True:
+        logging.info(f"Chunk directory '{chunk_path}' already exists, overwriting it")
+    else:
+        logging.info(f"Creating chunk directory '{chunk_path}'")
     # Create chunk path
     os.makedirs(chunk_path, exist_ok=True)
 

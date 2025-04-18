@@ -1,7 +1,6 @@
 import logging
 import os
 from fepa.core.dim_reducers import PCADimReducer
-from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.core.featurizers import BATFeaturizer
 from fepa.core.visualizers import (
     DimRedVisualizer,
