@@ -79,8 +79,8 @@ class PCADimReducer(BaseDimReducer):
                 self.feature_only_df.values, i, self.pca
             )
         pca_projection_df = pd.DataFrame(pca_projection_dict)
-        pca_projection_df["ensemble"] = self.feature_df["ensemble"]
-        pca_projection_df["timestep"] = self.feature_df["timestep"]
+        pca_projection_df["ensemble"] = self.feature_df["ensemble"].values
+        pca_projection_df["timestep"] = self.feature_df["timestep"].values
         self.pca_projection_df = pca_projection_df
 
     def get_pca_projection_df(self):
