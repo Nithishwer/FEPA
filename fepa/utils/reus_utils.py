@@ -5,11 +5,17 @@ import logging
 import re
 import numpy as np
 import subprocess
-
+from fepa.utils.plumed_utils import add_resid_offset_to_ca_indices
 
 
 def setup_reus(
-    wdir_path, plumed_path, sim_name, job_template, reus_name="reus_v1", n_windows=24
+    wdir_path,
+    plumed_path,
+    sim_name,
+    job_template,
+    reus_name="reus_v1",
+    n_windows=24,
+    plumed_resid_offset=None,
 ):
     # Navigate to memento_dir/wdir/boxes
     print(f"Setting up REUS for the complex : {sim_name}.")
@@ -25,7 +31,14 @@ def setup_reus(
     box_folders = ["sim" + str(i) for i in range(n_windows)]
 
     # Copy plumed file
-    shutil.copy(plumed_path, os.path.join(reus_path, "plumed.dat"))
+    if plumed_resid_offset is not None:
+        add_resid_offset_to_ca_indices(
+            plumed_path,
+            os.path.join(reus_path, "plumed.dat"),
+            plumed_resid_offset,
+        )
+    else:
+        shutil.copy(plumed_path, os.path.join(reus_path, "plumed.dat"))
     shutil.copy(job_template, reus_path)
 
     # Replace all occurences of jobname in job_archer_reus.sh with sim_name

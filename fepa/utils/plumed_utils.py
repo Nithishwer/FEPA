@@ -98,3 +98,20 @@ def make_restraint_array_from_ensemble_centers(
     # Generate a equidistant array from CV_value_ensemble1 to CV_value_ensemble2
     restraint_centers = np.linspace(CV_value_ensemble1, CV_value_ensemble2, num=24)
     return restraint_centers
+
+
+def add_resid_offset_to_ca_indices(input_path, output_path, offset):
+    # Pattern to match @CA-XXX where XXX is one or more digits
+    pattern = re.compile(r"@CA-(\d+)")
+
+    with open(input_path, "r") as file:
+        lines = file.readlines()
+
+    modified_lines = []
+    for line in lines:
+        # Replace each @CA-XXX with @CA-(XXX + offset)
+        new_line = pattern.sub(lambda m: f"@CA-{int(m.group(1)) + offset}", line)
+        modified_lines.append(new_line)
+
+    with open(output_path, "w") as file:
+        file.writelines(modified_lines)

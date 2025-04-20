@@ -38,6 +38,7 @@ class reus_umbrella_sampling_workflow:
         end,
         reus_folder_name="reus_v1",
         n_windows=24,
+        plumed_resid_offset=None,
     ):
         logging.info("Initializing reus_umbrella_sampling_workflow...")
         self.wdir_path = wdir_path
@@ -49,6 +50,7 @@ class reus_umbrella_sampling_workflow:
         self.wham_path = os.path.join(self.wdir_path, self.reus_folder_name, "wham")
         self.start = start
         self.end = end
+        self.plumed_resid_offset = plumed_resid_offset
 
     def setup_simulations(self, exist_ok=False):
         setup_reus(
@@ -58,6 +60,7 @@ class reus_umbrella_sampling_workflow:
             reus_name=self.reus_folder_name,
             job_template=self.submission_script_template_arr,
             n_windows=self.n_windows,
+            plumed_resid_offset=self.plumed_resid_offset,
         )
 
     def prepare_wham(self, n_windows=24):
@@ -161,7 +164,9 @@ class reus_umbrella_sampling_workflow:
                 [(wham_path, at_values) for wham_path in prepared_wham_paths],
             )
 
-    def analyse_us_hist(self, range=(90, 180), colvar_filename=None, colvar_prefix=None):
+    def analyse_us_hist(
+        self, range=(90, 180), colvar_filename=None, colvar_prefix=None
+    ):
         # Make us_path
         us_path = os.path.join(self.wdir_path, self.reus_folder_name)
 
