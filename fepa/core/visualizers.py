@@ -653,7 +653,6 @@ def plot_pca_components(
 
 def plot_entropy_heatmaps(
     cmp,
-    ensemble_handler,
     columns_to_consider,
     projection_df,
     output_dir,

@@ -12,7 +12,7 @@ import numpy as np
 from multiprocessing import Pool
 from functools import partial
 import MDAnalysis.analysis.hbonds
-from pensa.features import read_atom_self_distances, read_h_bonds
+from pensa.features import read_atom_self_distances, read_h_bonds, read_protein_sidechain_torsions
 from fepa.utils.BAT_utils import read_BAT
 from fepa.utils.water_utils import WaterOccupancyAnalysis
 from fepa.core.ensemble_handler import EnsembleHandler
@@ -296,3 +296,30 @@ class WaterBindingSiteFeaturizer(BaseFeaturizer):
             feature_dfs.append(ensemble_feature_df)
 
         self.feature_df = pd.concat(feature_dfs, ignore_index=True)        
+
+class SideChainTorsionsFeaturizer(BaseFeaturizer):
+    def __init__(self, ensemble_handler: EnsembleHandler):
+        super().__init__(ensemble_handler)
+        self.feature_type = "SideChainTorsions"
+        self.feature_df = None
+    
+    def featurize(self):
+        feature_dfs = []
+        for ensemble in self.ensemble_handler.path_dict.keys():
+            logging.info("Featurizing %s...", ensemble)
+            tpr_path = self.ensemble_handler.path_dict[ensemble]["tpr"]
+            xtc_path = self.ensemble_handler.path_dict[ensemble]["xtc"]
+            name, data = read_protein_sidechain_torsions(
+                tpr_path,
+                xtc_path,
+            )
+            print(name)
+            print(data)
+            ensemble_feature_df = pd.DataFrame(data, columns=name)
+            ensemble_feature_df["timestep"] = (
+                self.ensemble_handler.get_timestep_from_universe(key=ensemble)
+            )
+            ensemble_feature_df["ensemble"] = ensemble
+            feature_dfs.append(ensemble_feature_df)
+        
+        self.feature_df = pd.concat(feature_dfs, ignore_index=True)
