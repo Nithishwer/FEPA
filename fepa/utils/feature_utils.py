@@ -1,7 +1,7 @@
 """
 Utility functions for feature dataframes.
 """
-
+import numpy as np
 import re
 from fepa.core.analyzers import compute_relative_entropy
 
@@ -99,3 +99,35 @@ def filter_top_features(
     top_features_df["ensemble"] = feature_df["ensemble"]
     top_features_df["timestep"] = feature_df["timestep"]
     return top_features_df
+
+def convert_features_df_w_components_to_angles(
+    features_df_w_components, feature_column_keyword='CHI',save_path=None):
+        # Convert the features_df_w_components to features_df_w_angles
+        features_df_w_angles = features_df_w_components.copy()
+        torsion_columns = [
+            col for col in features_df_w_components.columns if feature_column_keyword in col
+        ]
+        for col in torsion_columns:
+            original_col = col.split('_')[0]
+            # Get angle from the sin and cos columns
+            col_sin = f"{original_col}_sin"
+            col_cos = f"{original_col}_cos"
+            # For each value in the column, compute the angle from the sin and cos columns
+            features_df_w_angles[original_col] = np.arctan2(
+                features_df_w_components[col_sin],
+                features_df_w_components[col_cos],
+            )
+            features_df_w_angles[original_col] = np.rad2deg(
+                features_df_w_components[original_col]
+            )
+        # Remove all torsion columns
+        features_df_w_angles = features_df_w_angles.drop(
+            columns=torsion_columns, axis=1
+        )
+        if save_path is not None:
+            # Save features with angles
+            features_df_w_angles.to_csv(
+            save_path,
+            index=False,
+        )
+        

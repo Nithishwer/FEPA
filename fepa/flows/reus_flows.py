@@ -10,6 +10,9 @@ import subprocess
 from fepa.utils.reus_utils import (
     setup_reus,
 )
+from fepa.utils.plumed_utils import (
+    add_resid_offset_to_ca_indices,
+)
 from fepa.utils.wham_utils import (
     process_wham_path,
     plot_free_combined,
@@ -36,6 +39,8 @@ class reus_umbrella_sampling_workflow:
         submission_script_template_arr,
         start,
         end,
+        initial_gro=None,
+        target_gro=None,
         reus_folder_name="reus_v1",
         n_windows=24,
         plumed_resid_offset=None,
@@ -51,6 +56,8 @@ class reus_umbrella_sampling_workflow:
         self.start = start
         self.end = end
         self.plumed_resid_offset = plumed_resid_offset
+        self.initial_gro = initial_gro
+        self.target_gro = target_gro
 
     def setup_simulations(self, exist_ok=False):
         setup_reus(
@@ -203,3 +210,45 @@ class reus_umbrella_sampling_workflow:
             units=units,
             box_CV_means_csv=os.path.join(self.reus_path, "mean_values.csv"),
         )
+    
+    def get_initial_final_CVs(self):
+        """
+        Get the initial and final CV values from the plumed file.
+        """
+        # Create a folder in wdir for initial and final gro files
+        initial_folder = os.path.join(self.wdir_path, "initial_structure")
+        target_folder = os.path.join(self.wdir_path, "target_structure")
+        os.makedirs(initial_folder, exist_ok=True)
+        os.makedirs(target_folder, exist_ok=True)
+        # Get the initial and final gro files
+        initial_gro_file = os.path.join(initial_folder, "initial.gro")
+        target_gro_file = os.path.join(target_folder, "target.gro")
+        # Copy the initial and final gro files to the respective folders
+        shutil.copy(self.initial_gro, initial_gro_file)
+        shutil.copy(self.target_gro, target_gro_file)
+        add_resid_offset_to_ca_indices(self.plumed_path, os.path.join(initial_folder, "plumed.dat"), self.plumed_resid_offset)
+        add_resid_offset_to_ca_indices(self.plumed_path, os.path.join(target_folder, "plumed.dat"), self.plumed_resid_offset)
+        # Replace the reference.pdb path in the plumed file
+        with open(os.path.join(initial_folder, "plumed.dat"), "r") as f:
+            plumed_file = f.read()
+        plumed_file = re.sub(r"\.\./reference.pdb", "reference.pdb", plumed_file)
+        with open(os.path.join(initial_folder, "plumed.dat"), "w") as f:
+            f.write(plumed_file)
+        with open(os.path.join(target_folder, "plumed.dat"), "r") as f:
+            plumed_file = f.read()
+        plumed_file = re.sub(r"\.\./reference.pdb", "reference.pdb", plumed_file)
+        with open(os.path.join(target_folder, "plumed.dat"), "w") as f:
+            f.write(plumed_file)
+        # Copy reference pdb file to the respective folders
+        reference_pdb = os.path.join(self.reus_path,'reference.pdb')
+        shutil.copy(reference_pdb, os.path.join(initial_folder, "reference.pdb"))
+        shutil.copy(reference_pdb, os.path.join(target_folder, "reference.pdb"))
+        # Run the plumed driver on the initial and final gro files
+        plumed_driver_command = "plumed driver --plumed plumed.dat --igro {gro_file}"
+        # cd into the intial and target folders and run the plumed driver
+        cwd = os.getcwd()
+        os.chdir(initial_folder)
+        subprocess.run(plumed_driver_command.format(gro_file=initial_gro_file), shell=True)
+        os.chdir(target_folder)
+        subprocess.run(plumed_driver_command.format(gro_file=target_gro_file), shell=True)
+        os.chdir(cwd)
