@@ -124,20 +124,21 @@ class binding_pocket_analysis_workflow:
             save_path=os.path.join(cmp_output_dir, "holo_pca_components.png"),
         )
 
-    def plot_apo_holo_pca(self, cmp_output_dir):
+    def plot_apo_holo_pca(self, cmp_output_dir, apo_list=None, holo_list=None):
         """
         Plots the PCA components and eigenvalues for ABFE simulations
         """
         logging.info("Visualizing compound %s...", self.cmp)
-        ensembles_to_plot = [
-            "apo_1",
-            "apo_2",
-            "apo_3",
-            f"{self.cmp}_van_1",
-            f"{self.cmp}_van_2",
-            f"{self.cmp}_van_3",
-            f"{self.cmp}_nvt",
-        ]
+        if apo_list is None:
+            apo_list = ["apo_1", "apo_2", "apo_3"]
+        if holo_list is None:
+            holo_list = [
+                f"{self.cmp}_van_1",
+                f"{self.cmp}_van_2",
+                f"{self.cmp}_van_3",
+                f"{self.cmp}_nvt",
+            ]
+        ensembles_to_plot = apo_list + holo_list
         # Get projection df subset
         projection_df_subset = self.projection_df[
             self.projection_df["ensemble"].isin(ensembles_to_plot)
@@ -177,17 +178,11 @@ class binding_pocket_analysis_workflow:
         Plots the PCA components and eigenvalues
         """
         logging.info("Visualizing compound %s...", self.cmp)
-        generic_abfe_windows = [
-            "{CMP}_van_{VAN_NO}_coul.00",
-            "{CMP}_van_{VAN_NO}_coul.05",
-            "{CMP}_van_{VAN_NO}_coul.10",
-            "{CMP}_van_{VAN_NO}_vdw.00",
-            "{CMP}_van_{VAN_NO}_vdw.10",
-            "{CMP}_van_{VAN_NO}_vdw.15",
-            "{CMP}_van_{VAN_NO}_vdw.20",
-            "{CMP}_van_{VAN_NO}_rest.05",
-            "{CMP}_van_{VAN_NO}_rest.10",
-        ]
+        generic_abfe_windows = (
+            [f"{{CMP}}_van_{{VAN_NO}}_coul.{i:02}" for i in range(0, 11)]
+            + [f"{{CMP}}_van_{{VAN_NO}}_vdw.{i:02}" for i in range(0, 21)]
+            + [f"{{CMP}}_van_{{VAN_NO}}_rest.{i:02}" for i in range(0, 12)]
+        )
         van1_abfe_windows = [
             string.format(CMP=self.cmp, VAN_NO=1) for string in generic_abfe_windows
         ]

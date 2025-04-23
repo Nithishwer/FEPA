@@ -80,6 +80,44 @@ def load_paths_for_compound(
     return path_dict
 
 
+def load_paths_for_memento_boxes(
+    boxes_path: str,
+    nboxes: int,
+    bp_selection_string: str,
+    name: str,
+) -> dict:
+    """Loads MD trajectory paths for a given boxes path"""
+    path_dict = {}
+    for i in range(nboxes):
+        path_dict[f"{name}_{i}"] = {
+            "pdb": os.path.join(os.path.join(boxes_path, f"sim{i}"), "npt.gro"),
+            "xtc": os.path.join(os.path.join(boxes_path, f"sim{i}"), "prod.xtc"),
+            "tpr": os.path.join(os.path.join(boxes_path, f"sim{i}"), "prod.tpr"),
+            "bp_selection_string": bp_selection_string,
+        }
+    return path_dict
+
+
+def load_paths_for_reus_boxes(
+    boxes_path: str,
+    nboxes: int,
+    bp_selection_string: str,
+    name: str,
+) -> dict:
+    """Loads MD trajectory paths for a given boxes path"""
+    path_dict = {}
+    for i in range(nboxes):
+        path_dict[f"{name}_{i}"] = {
+            "pdb": os.path.join(
+                os.path.join(boxes_path, f"sim{i}"), "equilibrated.gro"
+            ),
+            "xtc": os.path.join(os.path.join(boxes_path, f"sim{i}"), "traj_comp.xtc"),
+            "tpr": os.path.join(os.path.join(boxes_path, f"sim{i}"), "topol.tpr"),
+            "bp_selection_string": bp_selection_string,
+        }
+    return path_dict
+
+
 def load_abfe_paths_for_compound(
     # TODO: Need to change this not have old and new vanilla paths for van1
     config: dict,

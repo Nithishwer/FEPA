@@ -324,6 +324,7 @@ def plot_colvars(colvar_path="from_Archer", cutoff_time=5000, colvar_prefix="COL
         colvar_path (str): Path to the directory containing colvars data files (default: 'from_Archer)
     """
     print("Plotting colvars data...")
+    cwd = os.getcwd()
     os.chdir(colvar_path)
     # Step 1: Initialize an empty list to hold each file's CV column and the time column
     dataframes = []
@@ -367,8 +368,8 @@ def plot_colvars(colvar_path="from_Archer", cutoff_time=5000, colvar_prefix="COL
     # Save the plot
     plt.savefig("CV_v_time.png")
     # plt.show()
-    os.chdir("..")
     print("Plotting completed.")
+    os.chdir(cwd)  # Change back to the original directory
 
 
 def create_colvar_chunks(
@@ -644,7 +645,8 @@ def plot_free_combined(
     structure_1="holo",
     structure_2="apo",
     units="kcal",
-    box_CV_means_csv=None,
+    structure_1_CV = None,
+    structure_2_CV = None,
 ):
     """
     Plots the free energy profiles from multiple WHAM folders and saves the plot as a PNG file.
@@ -702,11 +704,6 @@ def plot_free_combined(
         lambda x: "red" if "reverse" in x else "DodgerBlue"
     )
 
-    # Get mean CV in structure_2 and structure_1 boxes
-    mean_df = pd.read_csv(box_CV_means_csv)
-    # Finding the structure_2 and structure_1 mean values
-    structure_1_mean = mean_df[mean_df["folder"] == "sim0"]["mean"].iloc[0]
-    structure_2_mean = mean_df[mean_df["folder"] == "sim23"]["mean"].iloc[0]
 
     # Plot coor vs free with color coding by category
     plt.figure(figsize=(8, 6), dpi=300)
@@ -723,7 +720,7 @@ def plot_free_combined(
         )
         # Calculate intersections with structure_1 and structure_2 lines
         for at_value, line_label in zip(
-            [structure_1_mean, structure_2_mean], [structure_1, structure_2]
+            [structure_1_CV, structure_2_CV], [structure_1, structure_2]
         ):
             intersection = np.interp(
                 at_value, category_data["coor"], category_data["free"]
@@ -748,10 +745,10 @@ def plot_free_combined(
         )
 
     # Add a vertical line at coor = a with a label
-    plt.axvline(x=structure_1_mean, color="grey", linestyle="--", linewidth=1)
-    plt.axvline(x=structure_2_mean, color="grey", linestyle="--", linewidth=1)
+    plt.axvline(x=structure_1_CV, color="grey", linestyle="--", linewidth=1)
+    plt.axvline(x=structure_2_CV, color="grey", linestyle="--", linewidth=1)
     plt.text(
-        structure_1_mean,
+        structure_1_CV,
         plt.gca().get_ylim()[1] * 0.9,
         structure_1,
         color="grey",
@@ -760,7 +757,7 @@ def plot_free_combined(
         style="italic",
     )
     plt.text(
-        structure_2_mean,
+        structure_2_CV,
         plt.gca().get_ylim()[1] * 0.9,
         structure_2,
         color="grey",
