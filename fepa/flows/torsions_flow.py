@@ -18,24 +18,44 @@ from fepa.utils.stat_utils import (
 )
 from fepa.utils.dimred_utils import cluster_pca
 from fepa.core.analyzers import compute_relative_entropy
+from fepa.utils.feature_utils import (
+    convert_features_df_w_components_to_angles,
+    convert_features_df_w_angles_to_w_components,
+)
 
 
 class torsions_analysis_workflow:
     """
-    This class is used to analyze ligand torsions from ABFE simulations
+    ##############################################################################################################################
+    This flow was used to analyze ligand torsions from ABFE simulations
+    This class is incomplete and is replaced in favour of RMSD clustering-based binding pose detection:
+    /biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1/fepa/examples/analysis/analysis_p8_binding_pose_clustering
+    This will be removed in the future.
+    ##############################################################################################################################
     """
 
     def __init__(self, ensemble_handler, sel="resname unk"):
         self.ensemble_handler = ensemble_handler
         self.sel = sel
 
-    def featurize(self):
+    def featurize(self, output_dir=None):
         """
         Featurizes the ligand torsions using the BATFeaturizer
         """
         self.featurizer = BATFeaturizer(self.ensemble_handler, sel=self.sel)
-        self.featurizer.featurize()
+        self.featurizer.featurize(output_dir=output_dir)
         self.feature_df = self.featurizer.get_feature_df()
+
+    def convert_features_df_w_components_to_angles(self, save_path=None):
+        """
+        Converts the feature dataframe with components to angles
+        """
+        # You can keep calling this and that will not be fine. So need to fix this.
+        self.feature_df = convert_features_df_w_angles_to_w_components(
+            features_df_w_angles=self.feature_df,
+            feature_column_keyword="BAT",
+            save_path=save_path,
+        )
 
     def reduce_dimensions(self, n_components=8):
         """

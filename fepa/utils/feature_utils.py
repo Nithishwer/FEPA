@@ -1,6 +1,7 @@
 """
 Utility functions for feature dataframes.
 """
+
 import numpy as np
 import re
 from fepa.core.analyzers import compute_relative_entropy
@@ -95,39 +96,73 @@ def filter_top_features(
     top_features_names = jsd_dict["name"][top_indices]
     # KEep only the clolumns with numbers in top indices in feature df
     top_features_df = feature_df[top_features_names]
-    top_features_df["cluster"] = feature_df["cluster"]
-    top_features_df["ensemble"] = feature_df["ensemble"]
-    top_features_df["timestep"] = feature_df["timestep"]
+    # Copy all non feature columns to the new dataframe
+    non_feature_columns = [
+        col for col in feature_df.columns if feature_column_keyword not in col
+    ]
+    for col in non_feature_columns:
+        top_features_df[col] = feature_df[col]
     return top_features_df
 
+
 def convert_features_df_w_components_to_angles(
-    features_df_w_components, feature_column_keyword='CHI',save_path=None):
-        # Convert the features_df_w_components to features_df_w_angles
-        features_df_w_angles = features_df_w_components.copy()
-        torsion_columns = [
-            col for col in features_df_w_components.columns if feature_column_keyword in col
-        ]
-        for col in torsion_columns:
-            original_col = col.split('_')[0]
-            # Get angle from the sin and cos columns
-            col_sin = f"{original_col}_sin"
-            col_cos = f"{original_col}_cos"
-            # For each value in the column, compute the angle from the sin and cos columns
-            features_df_w_angles[original_col] = np.arctan2(
-                features_df_w_components[col_sin],
-                features_df_w_components[col_cos],
-            )
-            features_df_w_angles[original_col] = np.rad2deg(
-                features_df_w_components[original_col]
-            )
-        # Remove all torsion columns
-        features_df_w_angles = features_df_w_angles.drop(
-            columns=torsion_columns, axis=1
+    features_df_w_components, feature_column_keyword="CHI", save_path=None
+):
+    # Convert the features_df_w_components to features_df_w_angles
+    features_df_w_angles = features_df_w_components.copy()
+    torsion_columns = [
+        col for col in features_df_w_components.columns if feature_column_keyword in col
+    ]
+    for col in torsion_columns:
+        original_col = col.split("_")[0]
+        # Get angle from the sin and cos columns
+        col_sin = f"{original_col}_sin"
+        col_cos = f"{original_col}_cos"
+        # For each value in the column, compute the angle from the sin and cos columns
+        features_df_w_angles[original_col] = np.arctan2(
+            features_df_w_components[col_sin],
+            features_df_w_components[col_cos],
         )
-        if save_path is not None:
-            # Save features with angles
-            features_df_w_angles.to_csv(
+        features_df_w_angles[original_col] = np.rad2deg(
+            features_df_w_components[original_col]
+        )
+    # Remove all torsion columns
+    features_df_w_angles = features_df_w_angles.drop(columns=torsion_columns, axis=1)
+    if save_path is not None:
+        # Save features with angles
+        features_df_w_angles.to_csv(
             save_path,
             index=False,
         )
-        
+
+
+def convert_features_df_w_angles_to_w_components(
+    features_df_w_angles, feature_column_keyword="CHI", save_path=None, units="radians"
+):
+    # Assumes all anngles are in radians
+    # Convert the features_df_w_angles to features_df_w_components
+    features_df_w_components = features_df_w_angles.copy()
+    torsion_columns = [
+        col for col in features_df_w_angles.columns if feature_column_keyword in col
+    ]
+    for col in torsion_columns:
+        # Get angle from the sin and cos columns
+        col_sin = f"{col}_sin"
+        col_cos = f"{col}_cos"
+        # Convert the degrees to radians
+        if units == "degrees":
+            features_df_w_components[col] = np.deg2rad(features_df_w_components[col])
+        # For each value in the column, compute the angle from the sin and cos columns
+        features_df_w_components[col_sin] = np.sin(features_df_w_components[col])
+        features_df_w_components[col_cos] = np.cos(features_df_w_components[col])
+    # Remove all torsion columns
+    features_df_w_components = features_df_w_components.drop(
+        columns=torsion_columns, axis=1
+    )
+    if save_path is not None:
+        # Save features with components
+        features_df_w_components.to_csv(
+            save_path,
+            index=False,
+        )
+    return features_df_w_components

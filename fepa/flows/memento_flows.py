@@ -25,7 +25,8 @@ class memento_workflow:
         self.target_gro = target_gro
         self.initial_name = initial_name
         self.target_name = target_name
-        self.template_path = template_path
+        self.template_path = template_path  # Should have topology with protein and popc
+        # Template path topol.top must have include statements for c alpha posres in topology and DCAPOSRES in prod.mdp
         self.protonation_states = protonation_states
         self.run_name = run_name
         self.folder_name = f"{self.initial_name}_{self.target_name}"
