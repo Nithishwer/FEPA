@@ -110,7 +110,9 @@ def process_colvars(
     os.chdir(cwd)  # Change back to the original directory
 
 
-def analyse_us_hist(us_path, range, colvar_filename=None,colvar_prefix=None, label="steus_v1"):
+def analyse_us_hist(
+    us_path, range, colvar_filename=None, colvar_prefix=None, label="steus_v1"
+):
     # Navigate to memento_dir/wdir/boxes
     logging.info(f"Analysing US histograms in {us_path}")
 
@@ -133,13 +135,10 @@ def analyse_us_hist(us_path, range, colvar_filename=None,colvar_prefix=None, lab
         logging.info(f"Processing folder: {folder}")
 
         if colvar_filename is None:
-            colvar_path = os.path.join(
-            us_path, folder, f"{colvar_prefix}.{folder[3:]}")
+            colvar_path = os.path.join(us_path, folder, f"{colvar_prefix}.{folder[3:]}")
         else:
-            colvar_path = os.path.join(
-            us_path, folder, colvar_filename)
+            colvar_path = os.path.join(us_path, folder, colvar_filename)
 
-        
         # Read the colvar file, skipping the first line with '#! FIELDS time CV'
         data = pd.read_csv(colvar_path, sep="\s+", skiprows=1, names=["time", "CV"])
 
@@ -180,8 +179,6 @@ def analyse_us_hist(us_path, range, colvar_filename=None,colvar_prefix=None, lab
     logging.info(f"Mean values saved to {os.path.join(us_path, 'mean_values.csv')}")
 
 
-
-
 def parse_us_plumed_file(plumed_path):
     """
     Parses the plumed.dat file to extract KAPPA and AT values.
@@ -217,6 +214,7 @@ def parse_us_plumed_file(plumed_path):
 
     return kappa, at_value
 
+
 def parse_hrex_us_plumed_file(plumed_path):
     """
     Parses the plumed.dat file to extract KAPPA and AT values.
@@ -243,7 +241,7 @@ def parse_hrex_us_plumed_file(plumed_path):
                 if at_match:
                     at_values_str = at_match.group(1)
                     at_values = [float(x) for x in at_values_str.split(",")]
-                    
+
                 else:
                     raise ValueError("Error: AT values not found in plumed.dat.")
 
@@ -373,8 +371,12 @@ def plot_colvars(colvar_path="from_Archer", cutoff_time=5000, colvar_prefix="COL
 
 
 def create_colvar_chunks(
-    wham_path, colvar_100_pct_path, chunk_size_percentage=100, direction="forward"
-, overwrite= False):
+    wham_path,
+    colvar_100_pct_path,
+    chunk_size_percentage=100,
+    direction="forward",
+    overwrite=False,
+):
     """
     Splits the colvar data files into chunks of a specified size.
 
@@ -391,10 +393,10 @@ def create_colvar_chunks(
     )
     # Define the chunk directory and copy colvar files into it
     chunk_path = f"{wham_path}/colvars_{chunk_size_percentage}_pct_{direction}"
-    if os.path.exists(chunk_path) and overwrite== False:
+    if os.path.exists(chunk_path) and overwrite == False:
         logging.info(f"Chunk directory '{chunk_path}' already exists, quitting")
         return 0
-    elif os.path.exists(chunk_path) and overwrite== True:
+    elif os.path.exists(chunk_path) and overwrite == True:
         logging.info(f"Chunk directory '{chunk_path}' already exists, overwriting it")
     else:
         logging.info(f"Creating chunk directory '{chunk_path}'")
@@ -645,8 +647,8 @@ def plot_free_combined(
     structure_1="holo",
     structure_2="apo",
     units="kcal",
-    structure_1_CV = None,
-    structure_2_CV = None,
+    structure_1_CV=None,
+    structure_2_CV=None,
 ):
     """
     Plots the free energy profiles from multiple WHAM folders and saves the plot as a PNG file.
@@ -703,7 +705,6 @@ def plot_free_combined(
     df["colors"] = df["category"].apply(
         lambda x: "red" if "reverse" in x else "DodgerBlue"
     )
-
 
     # Plot coor vs free with color coding by category
     plt.figure(figsize=(8, 6), dpi=300)
@@ -772,7 +773,7 @@ def plot_free_combined(
         plt.ylabel("Free (kcal/mol)", fontsize=12)
     else:
         plt.ylabel("Free (kJ/mol)", fontsize=12)
-    plt.title(f"STEUS for {title}", fontsize=16)
+    plt.title(f"US for {title}", fontsize=16)
     plt.grid(True, linestyle="-", alpha=0.6)
     plt.legend(title="Category", fontsize=10, title_fontsize="13")
     plt.tight_layout()
