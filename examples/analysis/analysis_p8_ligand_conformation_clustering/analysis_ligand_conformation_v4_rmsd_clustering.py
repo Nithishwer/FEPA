@@ -42,21 +42,20 @@ def main():
     config = load_config(config_path)
     parent_output_dir = "../../wdir/data/"
     analysis_output_dir = os.path.join(
-        parent_output_dir, "analysis_p8_ligand_conformation_clustering"
+        parent_output_dir, "analysis_p8_ligand_conformation_clustering_si_calphas"
     )
     if not os.path.exists(analysis_output_dir):
         os.makedirs(analysis_output_dir)
 
     # Creating van_list and leg_window_list
     # van_list = [i for i in range(1, 4)]
-    # leg_window_list = (
-    #     [f"coul.{i:02}" for i in range(0, 4)]
+    leg_window_list = [f"coul.{i:02}" for i in range(0, 11)]
     # [f"coul.{i:02}" for i in range(0, 11)]
     # + [f"vdw.{i:02}" for i in range(0, 12)]
     # + [f"rest.{i:02}" for i in range(0, 11)]
     # )
 
-    cmps_of_interest = ["48951", "47594", "49599", "52542", "47821"]
+    cmps_of_interest = ["48951", "47594", "49599", "52542", "47821", "46905", "48845"]
 
     # Prepare paths
     # path_dict = load_abfe_paths_for_compound(
@@ -69,10 +68,12 @@ def main():
     # )
 
     for cmp in cmps_of_interest:
-        path_dict = load_paths_for_compound(
+        path_dict = load_abfe_paths_for_compound(
             config,
             cmp=cmp,
             bp_selection_string="name CA and resid " + config["pocket_residues_string"],
+            van_list=[1, 2, 3],
+            leg_window_list=leg_window_list,
             apo=False,
         )
 
@@ -97,7 +98,7 @@ def main():
         cluster_collection = encore.cluster(
             ensembles=ensemble_list,
             select=sel,
-            superimposition_subset=sel,
+            superimposition_subset="name CA",
             method=dbscan_method,
         )
 

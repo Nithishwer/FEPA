@@ -16,6 +16,7 @@ def setup_reus(
     reus_name="reus_v1",
     n_windows=24,
     plumed_resid_offset=None,
+    plumed_resid_break=None,
 ):
     # Navigate to memento_dir/wdir/boxes
     print(f"Setting up REUS for the complex : {sim_name}.")
@@ -36,6 +37,8 @@ def setup_reus(
             plumed_path,
             os.path.join(reus_path, "plumed.dat"),
             plumed_resid_offset,
+            plumed_resid_break,
+
         )
     else:
         shutil.copy(plumed_path, os.path.join(reus_path, "plumed.dat"))

@@ -4,11 +4,13 @@ This module contains classes for featurizing molecular dynamics trajectories of 
 
 import logging
 import os
+import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 import pandas as pd
 import multiprocessing
 import numpy as np
+from MDAnalysis.topology.guessers import guess_atom_element
 from multiprocessing import Pool
 from functools import partial
 import MDAnalysis.analysis.hbonds
@@ -218,8 +220,86 @@ class WaterBridgeFeaturizer(BaseFeaturizer):
         self.selection_string1 = sel1
         self.selection_string2 = sel2
         self.order = order
-        self.feature_df = None
+        self.feature_dict = {}
+        self.acceptors = []
+        self.donors = []
+    
+    def get_hbond_donors_and_acceptors(self, ligand_selection: str):
+        """
+        This method should return the donors and acceptors for the water bridge analysis.
+        """
+        # Get the first non apo universe from the ensemble handler
+        for ensemble in self.ensemble_handler.path_dict.keys():
+            if "apo" not in ensemble:
+                break        
+        u = self.ensemble_handler.get_universe_dict()[ensemble]
 
+        # Get the ligand selection
+        ligand = u.select_atoms(ligand_selection)
+
+        # Standard valence electrons
+        valence_electrons_dict = {
+            'H': 1,
+            'C': 4,
+            'N': 5,
+            'O': 6,
+            'F': 7,
+            'Cl': 7,
+            'Br': 7,
+            'I': 7,
+            'S': 6,
+            'P': 5,
+        }
+
+        # Typical valences for bonding
+        expected_bonds_dict = {
+            'H': 1,
+            'C': 4,
+            'N': 3,
+            'O': 2,
+            'F': 1,
+            'Cl': 1,
+            'Br': 1,
+            'I': 1,
+            'S': 2,  # varies
+            'P': 3,  # varies
+        }
+
+        # Define electronegative elements
+        electronegga = ['O', 'N', 'S', 'F', 'Cl', 'Br', 'P']
+
+        for atom in ligand.atoms:
+            # Get element type from atom name
+            elem = guess_atom_element(atom.name)
+            #print(f"Atom: {atom.name}, Type: {atom.type}, Element: {elem}")
+            if elem=='H':
+                # Check if it is bonded to an electronegative atom
+                bonded_atoms = atom.bonded_atoms
+                for bonded_atom in bonded_atoms:
+                    if guess_atom_element(bonded_atom.name) in electronegga:
+                        # If it is bonded to an electronegative atom, it is a donor
+                        self.donors.append(atom.name)
+                        #print(f"Donor: {atom.name}")
+                        break
+            if elem in electronegga:
+                # Check if it has lone pairs
+                elem = guess_atom_element(atom.name)
+                # Guessed element
+                #print(f"Element guessed: {elem}")
+                bonded = len(atom.bonds)
+                valence = valence_electrons_dict.get(elem, 0)
+                expected = expected_bonds_dict.get(elem, 0)
+                
+                lone_pair_electrons = valence - bonded
+                lone_pairs = lone_pair_electrons // 2 if lone_pair_electrons >= 0 else 0
+
+                if lone_pairs > 0:
+                    self.acceptors.append(atom.name)
+                    #print(f"Acceptor: {atom.name} with {bonded} bonds and  {lone_pairs} lone pairs")
+        # Print the donors and acceptors
+        print("Donors:", self.donors)
+        print("Acceptors:", self.acceptors)
+                        
     def featurize(self):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
@@ -256,42 +336,63 @@ class WaterBridgeFeaturizer(BaseFeaturizer):
                 u,
                 selection1=self.selection_string1,
                 selection2=self.selection_string2,
+                water_selection="resname SOL",
                 order=self.order,
+                donors=self.donors,
+                acceptors=self.acceptors,
             )
             w.run()
-            print(w.results.timeseries)
 
-            list_of_lists = w.results.timeseries
-            # Check if any list in list of lists has an element
-            if all(len(lst) == 0 for lst in list_of_lists):
-                print("All lists are empty.")
-            else:
-                print("WATER BRIDGES FOUND!!!")
-                print(list_of_lists)
-                print("Now need to plot it!!!!!")
+            # Store the results in a dictionary
+            self.feature_dict[ensemble] = w.results.timeseries
+    
+    def convert(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, tuple):
+            return tuple(self.convert(i) for i in obj)
+        elif isinstance(obj, list):
+            return [self.convert(i) for i in obj]
+        elif isinstance(obj, dict):
+            return {k: self.convert(v) for k, v in obj.items()}
+        else:
+            return obj
 
-            # Create a parallel function
-            # run_per_frame = partial(get_water_occupancy_in_sphere_per_frame,
-            #             atomgroup=u.atoms,
-            #             bp_selection_string=bp_selection_string,
-            #             radius=radius)
-            # frame_values = np.arange(u.trajectory.n_frames)
+    def save_features(self, output_dir: str, overwrite: Optional[bool] = False):
+        """Save features to a json file"""
+        out_file = os.path.join(output_dir, f"{self.feature_type}_features.json")
+        if not os.path.exists(output_dir):
+            logging.info("Creating output directory %s", output_dir)
+            os.makedirs(output_dir)
+        elif os.path.exists(out_file):
+            logging.info(
+                "Output directory %s already exists. Overwrite set to %s",
+                output_dir,
+                overwrite,
+            )
+            if not overwrite:
+                raise ValueError(f"Output directory {output_dir} already exists.")
+        # Convert the feature dictionary to a JSON serializable format                            
+        with open(os.path.join(output_dir, f"{self.feature_type}_features.csv"), "w") as f:
+            json.dump(self.convert(self.feature_dict), f)
 
-            # print(w.results.timeseries)
-
-            # # Running analysis in parallel
-            # with Pool(n_jobs) as worker_pool:
-            #     result = worker_pool.map(run_per_frame, frame_values)
-
-            # # Convert the output dictionary to a DataFrame
-            # ensemble_feature_df = pd.DataFrame(data=result, columns=['n_waters'])
-            # ensemble_feature_df["timestep"] = (
-            #     self.ensemble_handler.get_timestep_from_universe(key=ensemble)
-            # )
-            # ensemble_feature_df["ensemble"] = ensemble
-            # feature_dfs.append(ensemble_feature_df)
-
-        # self.feature_df = pd.concat(feature_dfs, ignore_index=True)
+    def load_features(self, input_dir: str):
+        """Load features from a csv file"""
+        json_file = os.path.join(input_dir, f"{self.feature_type}_features.json")
+        with open(json_file, "r") as f:
+            self.feature_dict = json.load(f)
+        logging.info("Loaded features from %s", json_file)
+    
+    def get_feature_df(self):
+        raise NotImplementedError(
+            "get_feature_df() is not implemented for WaterBridgeFeaturizer. Use get_feature_dict() instead."
+        )
+    
+    def get_feature_dict(self):
+        """Return the feature dictionary"""
+        return self.feature_dict
 
 
 class HbondFeaturizer(BaseFeaturizer):

@@ -100,7 +100,7 @@ def make_restraint_array_from_ensemble_centers(
     return restraint_centers
 
 
-def add_resid_offset_to_ca_indices(input_path, output_path, offset):
+def add_resid_offset_to_ca_indices(input_path, output_path, offset, resid_break):
     # Pattern to match @CA-XXX where XXX is one or more digits
     pattern = re.compile(r"@CA-(\d+)")
 
@@ -109,9 +109,34 @@ def add_resid_offset_to_ca_indices(input_path, output_path, offset):
 
     modified_lines = []
     for line in lines:
-        # Replace each @CA-XXX with @CA-(XXX + offset)
-        new_line = pattern.sub(lambda m: f"@CA-{int(m.group(1)) + offset}", line)
+        # Replace each @CA-XXX with @CA-(XXX + offset) or @CA-(XXX + offset + resid_break[1]) based on condition
+        def replace_ca(match):
+            if resid_break is None:
+                first_missing_resid = 0
+                no_of_missing_residues = 0
+            else:
+                first_missing_resid = resid_break[0]
+                no_of_missing_residues = resid_break[1]
+            # Convert the resids
+            resid = int(match.group(1))
+            if resid < first_missing_resid - offset:
+                new_resid = resid + offset
+            else:
+                new_resid = resid + offset + no_of_missing_residues
+            return f"@CA-{new_resid}"
+
+        new_line = pattern.sub(replace_ca, line)
         modified_lines.append(new_line)
 
     with open(output_path, "w") as file:
         file.writelines(modified_lines)
+
+
+def remove_duplicate_headers_and_clean(input_path, output_path):
+    with open(input_path, "r") as infile:
+        lines = infile.readlines()
+
+    with open(output_path, "w") as outfile:
+        for i, line in enumerate(lines):
+            if i == 0 or ( not line.startswith("#") and len(line.split(' ')) == 2):
+                outfile.write(line)

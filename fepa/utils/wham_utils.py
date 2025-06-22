@@ -6,6 +6,7 @@ import re
 import logging
 import subprocess
 import numpy as np
+from fepa.utils.plumed_utils import remove_duplicate_headers_and_clean
 
 
 def read_cv_from_colvar(filename):
@@ -136,10 +137,16 @@ def analyse_us_hist(
 
         if colvar_filename is None:
             colvar_path = os.path.join(us_path, folder, f"{colvar_prefix}.{folder[3:]}")
+            logging.info(f"Reading colvar path: {colvar_path}")
         else:
             colvar_path = os.path.join(us_path, folder, colvar_filename)
+            logging.info(f"Reading colvar path: {colvar_path}")
+
+        logging.info(f"Removing duplicate headers in {colvar_path}")
+        remove_duplicate_headers_and_clean(input_path=colvar_path, output_path=colvar_path)
 
         # Read the colvar file, skipping the first line with '#! FIELDS time CV'
+        logging.info(f"Reading colvar data from {colvar_path}")
         data = pd.read_csv(colvar_path, sep="\s+", skiprows=1, names=["time", "CV"])
 
         # Calculate the mean of 'CV'

@@ -44,6 +44,7 @@ class reus_umbrella_sampling_workflow:
         reus_folder_name="reus_v1",
         n_windows=24,
         plumed_resid_offset=None,
+        plumed_resid_break=None
     ):
         logging.info("Initializing reus_umbrella_sampling_workflow...")
         self.wdir_path = wdir_path
@@ -56,6 +57,7 @@ class reus_umbrella_sampling_workflow:
         self.start = start
         self.end = end
         self.plumed_resid_offset = plumed_resid_offset
+        self.plumed_resid_break = plumed_resid_break
         self.initial_gro = initial_gro
         self.target_gro = target_gro
 
@@ -68,7 +70,7 @@ class reus_umbrella_sampling_workflow:
             job_template=self.submission_script_template_arr,
             n_windows=self.n_windows,
             plumed_resid_offset=self.plumed_resid_offset,
-        )
+            plumed_resid_break=self.plumed_resid_break,)
 
     def prepare_wham(self, n_windows=24):
         # Create wham folder in reus path
@@ -211,7 +213,7 @@ class reus_umbrella_sampling_workflow:
             structure_2_CV=self.target_CV,
             units=units,
         )
-    
+
     def get_initial_final_CVs(self):
         """
         Get the initial and final CV values from the plumed file.
@@ -226,11 +228,29 @@ class reus_umbrella_sampling_workflow:
         initial_gro_file = os.path.join(initial_folder, "initial.gro")
         target_gro_file = os.path.join(target_folder, "target.gro")
         # Copy the initial and final gro files to the respective folders
-        logging.info(f"Copying initial gro file to {initial_folder}...")
+        logging.info(f"Copying initial gro file ({self.initial_gro}) to {initial_gro_file}...")
         shutil.copy(self.initial_gro, initial_gro_file)
+        # Copy the target gro file to the respective folder
+        logging.info(f"Copying target gro file ({self.target_gro}) to {target_gro_file}...")
         shutil.copy(self.target_gro, target_gro_file)
-        add_resid_offset_to_ca_indices(self.plumed_path, os.path.join(initial_folder, "plumed.dat"), self.plumed_resid_offset)
-        add_resid_offset_to_ca_indices(self.plumed_path, os.path.join(target_folder, "plumed.dat"), self.plumed_resid_offset)
+        if self.plumed_resid_offset is not None:
+            add_resid_offset_to_ca_indices(
+                self.plumed_path,
+                os.path.join(initial_folder, "plumed.dat"),
+                self.plumed_resid_offset,
+                self.plumed_resid_break
+            )
+            add_resid_offset_to_ca_indices(
+                self.plumed_path,
+                os.path.join(target_folder, "plumed.dat"),
+                self.plumed_resid_offset,
+                self.plumed_resid_break
+            )
+        else:
+            # Copy the plumed file to the respective folders
+            logging.info(f"Copying plumed files")
+            shutil.copy(self.plumed_path, os.path.join(initial_folder, "plumed.dat"))
+            shutil.copy(self.plumed_path, os.path.join(target_folder, "plumed.dat"))
         # Replace the reference.pdb path in the plumed file
         logging.info("Replacing reference.pdb path in plumed file...")
         with open(os.path.join(initial_folder, "plumed.dat"), "r") as f:
@@ -245,7 +265,7 @@ class reus_umbrella_sampling_workflow:
             f.write(plumed_file)
         # Copy reference pdb file to the respective folders
         logging.info("Copying reference.pdb file to initial and target folders...")
-        reference_pdb = os.path.join(self.reus_path,'reference.pdb')
+        reference_pdb = os.path.join(self.reus_path, "reference.pdb")
         shutil.copy(reference_pdb, os.path.join(initial_folder, "reference.pdb"))
         shutil.copy(reference_pdb, os.path.join(target_folder, "reference.pdb"))
         # Run the plumed driver on the initial and final gro files
@@ -254,25 +274,27 @@ class reus_umbrella_sampling_workflow:
         # cd into the intial and target folders and run the plumed driver
         cwd = os.getcwd()
         os.chdir(initial_folder)
-        subprocess.run(plumed_driver_command.format(gro_file=initial_gro_file), shell=True)
+        subprocess.run(
+            plumed_driver_command.format(gro_file=initial_gro_file), shell=True
+        )
         os.chdir(target_folder)
-        subprocess.run(plumed_driver_command.format(gro_file=target_gro_file), shell=True)
+        subprocess.run(
+            plumed_driver_command.format(gro_file=target_gro_file), shell=True
+        )
         # Read COLVAR file in initial folder to get initial CV value
-        logging.info('Reading COLVAR files to get initial and final CV values...')
+        logging.info("Reading COLVAR files to get initial and final CV values...")
         initial_colvar_file = os.path.join(initial_folder, "COLVAR")
-        initial_colvar_df = pd.read_csv(initial_colvar_file, delim_whitespace=True, 
-                 skiprows=1, 
-                 names=["time", "CV"])
+        initial_colvar_df = pd.read_csv(
+            initial_colvar_file, delim_whitespace=True, skiprows=1, names=["time", "CV"]
+        )
         self.initial_CV = initial_colvar_df["CV"].values[0]
         logging.info(f"Initial CV value: {self.initial_CV}")
         # Read COLVAR file in target folder to get final CV value
         logging.info(f"Reading COLVAR file in target folder: {target_folder}")
         target_colvar_file = os.path.join(target_folder, "COLVAR")
-        target_colvar_df = pd.read_csv(target_colvar_file, delim_whitespace=True, 
-                 skiprows=1, 
-                 names=["time", "CV"])
+        target_colvar_df = pd.read_csv(
+            target_colvar_file, delim_whitespace=True, skiprows=1, names=["time", "CV"]
+        )
         self.target_CV = target_colvar_df["CV"].values[0]
         logging.info(f"Target CV value: {self.target_CV}")
         os.chdir(cwd)
-        
-        
