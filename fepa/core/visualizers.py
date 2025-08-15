@@ -621,7 +621,7 @@ def plot_eigenvalues(pca_object, n_components, save_path=None):
 
 
 def plot_pca_components(
-    pca_object, feature_df, num: int, save_path=None, feature_column_keyword="DIST"
+    pca_object, feature_df, num: int, colorby = 'ensemble', save_path=None, feature_column_keyword="DIST"
 ):
     """
     This does not work with a lot of features. Check why -> TODO
@@ -631,10 +631,10 @@ def plot_pca_components(
     """
     if save_path is None:
         save_path = "plots/pca_components.pdf"
-    ensemble_label_list = np.unique(feature_df["ensemble"])
+    ensemble_label_list = np.unique(feature_df[colorby])
     ensemble_features_list = []
     for ensemble in ensemble_label_list:
-        ensemble_feature_df = feature_df[feature_df["ensemble"] == ensemble]
+        ensemble_feature_df = feature_df[feature_df[colorby] == ensemble]
         ensemble_features_values = ensemble_feature_df.filter(
             regex=feature_column_keyword
         ).values
@@ -656,6 +656,7 @@ def plot_entropy_heatmaps(
     columns_to_consider,
     projection_df,
     output_dir,
+    suffix="",
     entropy_metric="jsd",
 ):
     """
@@ -701,7 +702,7 @@ def plot_entropy_heatmaps(
     df = pd.DataFrame(matrix, index=ensembles, columns=ensembles)
 
     # Save df to the output directory
-    df.to_csv(f"{output_dir}/{cmp}_entropy_matrix.csv")
+    df.to_csv(f"{output_dir}/{cmp}_entropy_matrix_{suffix}.csv")
 
     # Plot the full heatmap (no masking)
     plt.figure(figsize=(12, 10))

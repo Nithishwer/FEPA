@@ -233,7 +233,13 @@ class reus_umbrella_sampling_workflow:
         # Copy the target gro file to the respective folder
         logging.info(f"Copying target gro file ({self.target_gro}) to {target_gro_file}...")
         shutil.copy(self.target_gro, target_gro_file)
+        # Copy the plumed file to the respective folders
+        logging.info(f"Copying plumed files")
+        shutil.copy(self.plumed_path, os.path.join(initial_folder, "plumed.dat"))
+        shutil.copy(self.plumed_path, os.path.join(target_folder, "plumed.dat"))
+
         if self.plumed_resid_offset is not None:
+            logging.info("Adding residue offset to CA indices in plumed file...")
             add_resid_offset_to_ca_indices(
                 self.plumed_path,
                 os.path.join(initial_folder, "plumed.dat"),
@@ -246,11 +252,6 @@ class reus_umbrella_sampling_workflow:
                 self.plumed_resid_offset,
                 self.plumed_resid_break
             )
-        else:
-            # Copy the plumed file to the respective folders
-            logging.info(f"Copying plumed files")
-            shutil.copy(self.plumed_path, os.path.join(initial_folder, "plumed.dat"))
-            shutil.copy(self.plumed_path, os.path.join(target_folder, "plumed.dat"))
         # Replace the reference.pdb path in the plumed file
         logging.info("Replacing reference.pdb path in plumed file...")
         with open(os.path.join(initial_folder, "plumed.dat"), "r") as f:

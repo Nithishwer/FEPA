@@ -17,7 +17,7 @@ class memento_workflow:
         initial_name,
         target_name,
         template_path,
-        protonation_states=None,
+        n_residues,
         run_name="memento_run_v1",
     ):
         self.memento_dir = memento_dir
@@ -27,10 +27,10 @@ class memento_workflow:
         self.target_name = target_name
         self.template_path = template_path  # Should have topology with protein and popc
         # Template path topol.top must have include statements for c alpha posres in topology and DCAPOSRES in prod.mdp
-        self.protonation_states = protonation_states
         self.run_name = run_name
         self.folder_name = f"{self.initial_name}_{self.target_name}"
         self.folder_path = os.path.join(self.memento_dir, self.folder_name)
+        self.n_residues = n_residues
 
     def prepare_memento(self):
         logging.info(
@@ -50,7 +50,7 @@ class memento_workflow:
             run_name=self.run_name,
         )
 
-    def run_memento(self, template_path, last_run, protonation_states=None):
+    def run_memento(self, template_path, last_run, cyx_residue_indices, protonation_states=None):
         if not os.path.exists(os.path.join(self.folder_path, self.run_name)):
             print(
                 f"Folder '{os.path.join(self.folder_path, self.run_name)}' does not exist."
@@ -66,6 +66,8 @@ class memento_workflow:
             # template_path="/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1_memento/apo_template",
             last_run=last_run,
             protonation_states=protonation_states,
+            n_residues=self.n_residues,
+            cyx_indices=cyx_residue_indices, 
         )
         os.chdir("../..")
 
