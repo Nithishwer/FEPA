@@ -1,11 +1,21 @@
 import os
 import shutil
 import logging
-import gromacs
+import subprocess
+
 from fepa.utils.memento_utils import (
     prepare_memento_input,
     run_pymemento,
 )
+
+def _run_gmx(args, cwd=None, input_str=None, timeout=900):
+    env = os.environ.copy()
+    env.setdefault("GMX_DISABLE_PAGER", "1")
+    cp = subprocess.run(["gmx"] + list(args),
+                        cwd=cwd, input=input_str, text=True,
+                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                        check=True, timeout=timeout, env=env)
+    return cp.stdout
 
 
 class memento_workflow:
@@ -63,7 +73,6 @@ class memento_workflow:
 
         run_pymemento(
             template_path=template_path,
-            # template_path="/biggin/b211/reub0138/Projects/orexin/deflorian_set_1_j13_v1_memento/apo_template",
             last_run=last_run,
             protonation_states=protonation_states,
             n_residues=self.n_residues,
@@ -84,9 +93,8 @@ class memento_workflow:
                 folder_path = os.path.join(boxes_dir, folder_name)
                 current_dir = os.getcwd()
                 os.chdir(folder_path)
-                gromacs.make_ndx(
-                    f="em.gro", o="index.ndx", input=(index_selection, "q")
-                )
+                _run_gmx(["make_ndx", "-f", "em.gro", "-o", "index.ndx"],
+                cwd=folder_path, input_str=f"{index_selection}\nq\n")
                 os.chdir(current_dir)
 
         # Copy the job script template

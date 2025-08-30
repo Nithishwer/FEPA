@@ -1,4 +1,4 @@
-Metadata-Version: 2.2
+Metadata-Version: 2.4
 Name: fepa
 Version: 0.1.0
 Summary: A package for analyzing the binding pocket for Free Energy simulations
@@ -37,6 +37,7 @@ Requires-Dist: pensa>=0.6.0
 Requires-Dist: seaborn>=0.13.2
 Dynamic: author
 Dynamic: home-page
+Dynamic: license-file
 Dynamic: requires-python
 
 # FEPA: Free Energy Pocket Analyzer

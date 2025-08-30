@@ -16,9 +16,11 @@ from functools import partial
 import MDAnalysis.analysis.hbonds
 from MDAnalysis.analysis import align, rms
 from pensa.features import (
-    read_atom_self_distances,
     read_h_bonds,
     read_protein_sidechain_torsions,
+)
+from fepa.utils.featurize_utils import (
+    compute_self_distances_with_transforms,
 )
 from fepa.utils.BAT_utils import read_BAT
 from fepa.utils.water_utils import WaterOccupancyAnalysis
@@ -86,13 +88,16 @@ class SelfDistanceFeaturizer(BaseFeaturizer):
             bp_selection_string = self.ensemble_handler.path_dict[ensemble][
                 "bp_selection_string"
             ]
-            name, data = read_atom_self_distances(
-                tpr_path,
-                xtc_path,
+            name, data = compute_self_distances_with_transforms(
+                tpr_path=tpr_path,
+                xtc_path=xtc_path,
                 selection=bp_selection_string,
+                start=None,
+                stop=None,
                 step=1,
-                naming="plain",
                 transformations=pp_trans,
+                pbc=True,
+                feature_prefix="DIST",
             )
             ensemble_feature_df = pd.DataFrame(data, columns=name)
             ensemble_feature_df["timestep"] = (
