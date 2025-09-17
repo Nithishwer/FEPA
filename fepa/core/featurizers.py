@@ -181,7 +181,7 @@ class BPWaterFeaturizer(BaseFeaturizer):
         super().__init__(ensemble_handler)
         self.feature_type = "WaterOccupancy"
 
-    def featurize(self, radius, n_jobs=20, pbc_corrections=False):
+    def featurize(self, radius, resname='SOL', n_jobs=20, pbc_corrections=False):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
@@ -208,6 +208,7 @@ class BPWaterFeaturizer(BaseFeaturizer):
                 ],
                 radius=radius,
                 verbose=True,
+                resname=resname
             ).run()
             # Add to the df list
             ensemble_feature_df = results.df
@@ -424,9 +425,13 @@ class HbondFeaturizer(BaseFeaturizer):
                 selection2=self.selection_string2,
             )
 
-            # Convert the output dictionary to a DataFrame
-            print(data)
-            ensemble_feature_df = pd.DataFrame(data=data.flatten(), columns=names)
+            # Print the shape of data and names for debugging
+            logging.info(f"Data shape: {data.shape}, Names length: {len(names)}")
+            logging.info(f"Names: {names[:5]}")
+            logging.info(f"Data (first 5 rows): {data[:5]}")
+
+            # Convert the output dictionary to a DataFrame        
+            ensemble_feature_df = pd.DataFrame(data=data.T, columns=names)
             ensemble_feature_df["timestep"] = (
                 self.ensemble_handler.get_timestep_from_universe(key=ensemble)
             )
@@ -545,3 +550,211 @@ class LigandRMSDFeaturizer(BaseFeaturizer):
             feature_dfs.append(ensemble_feature_df)
 
         self.feature_df = pd.concat(feature_dfs, ignore_index=True)
+
+
+class BindingPocketVolumeFeaturizer(BaseFeaturizer):
+    """Featurizer that computes binding pocket volume per frame for each ensemble.
+
+    Volume can be computed using either a convex hull or an alpha-shape (3D) over
+    the positions of atoms specified by an MDAnalysis selection.
+
+    Output schema (concatenated over all ensembles):
+        - frame:   integer frame index within the trajectory
+        - time_ps: time in picoseconds from MDAnalysis (ts.time)
+        - pocket_volume: volume in Å^3 for the selected pocket atoms at that frame
+        - method:  'convex' or 'alpha'
+        - alpha:   float (alpha-shape radius threshold), NaN for convex method
+        - timestep: timestep (ps) inferred from EnsembleHandler.get_timestep_from_universe
+        - ensemble: ensemble key (string)
+    """
+
+    def __init__(self, ensemble_handler: EnsembleHandler):
+        super().__init__(ensemble_handler)
+        self.feature_type = "BindingPocketVolume"
+        self.feature_df = None
+
+    # ------------------ geometry helpers ------------------ #
+    @staticmethod
+    def _convex_hull_volume(points: np.ndarray) -> float:
+        if points.shape[0] < 4:
+            return 0.0
+        try:
+            return float(ConvexHull(points).volume)
+        except Exception:
+            return 0.0
+
+    @staticmethod
+    def _tetra_circumradius(
+        a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray
+    ) -> float:
+        A = np.vstack([b - a, c - a, d - a]).T  # 3x3
+        try:
+            sq = np.array(
+                [
+                    np.dot(b - a, b - a),
+                    np.dot(c - a, c - a),
+                    np.dot(d - a, d - a),
+                ]
+            )
+            x = np.linalg.inv(A).dot(sq)
+            circumcenter = 0.5 * (A.dot(x))
+            return float(np.linalg.norm(circumcenter))
+        except np.linalg.LinAlgError:
+            return np.inf
+
+    @classmethod
+    def _alpha_shape_triangles(cls, points: np.ndarray, alpha: float):
+        if points.shape[0] < 4:
+            return []
+        delaunay = Delaunay(points)
+        tets = delaunay.simplices
+        keep = np.zeros(len(tets), dtype=bool)
+
+        # mark tetrahedra whose circumsphere radius < alpha
+        for i, tet in enumerate(tets):
+            a, b, c, d = points[tet]
+            R = cls._tetra_circumradius(a, b, c, d)
+            if R < alpha:
+                keep[i] = True
+
+        # boundary faces occur exactly once among kept tets
+        from collections import defaultdict
+
+        face_count = defaultdict(int)
+        face_owner = {}
+
+        def fkey(i, j, k):
+            return tuple(sorted((i, j, k)))
+
+        for idx, k in enumerate(keep):
+            if not k:
+                continue
+            tet = tets[idx]
+            faces = [
+                (tet[0], tet[1], tet[2]),
+                (tet[0], tet[1], tet[3]),
+                (tet[0], tet[2], tet[3]),
+                (tet[1], tet[2], tet[3]),
+            ]
+            for f in faces:
+                key = fkey(*f)
+                face_count[key] += 1
+                face_owner[key] = f
+
+        return [face_owner[k] for k, v in face_count.items() if v == 1]
+
+    @classmethod
+    def _alpha_shape_volume(cls, points: np.ndarray, alpha: float) -> float:
+        if points.shape[0] < 4:
+            return 0.0
+        tris = cls._alpha_shape_triangles(points, alpha)
+        if not tris:
+            return 0.0
+        vol = 0.0
+        for i, j, k in tris:
+            v0, v1, v2 = points[i], points[j], points[k]
+            vol += np.dot(v0, np.cross(v1, v2)) / 6.0
+        return float(abs(vol))
+
+    # ------------------ public API ------------------ #
+    def featurize(
+        self,
+        selection: Optional[str] = None,
+        method: Literal["convex", "alpha"] = "alpha",
+        alpha: float = 3.0,
+        use_pp_transforms: bool = False,
+        pbc_corrections: bool = False,
+    ):
+        """Compute pocket volume over time for each ensemble.
+
+        Args:
+            selection: MDAnalysis selection string. If None, falls back to
+                `path_dict[ensemble]["bp_selection_string"]`.
+            method: 'convex' (ConvexHull) or 'alpha' (alpha-shape surface).
+            alpha: Alpha-shape radius threshold (Å); used only if method=='alpha'.
+            use_pp_transforms: If True, applies ensemble_handler.make_ensemble_pp_trans(ensemble)
+                to trajectory prior to measurement (helps with continuity/alignment).
+            pbc_corrections: If True, applies an explicit unwrap/center/wrap/fit pipeline
+                similar to other featurizers.
+        """
+        assert method in ("convex", "alpha"), "method must be 'convex' or 'alpha'"
+
+        feature_dfs = []
+        for ensemble in self.ensemble_handler.path_dict.keys():
+            logging.info("Featurizing pocket volume for %s...", ensemble)
+            u = self.ensemble_handler.get_universe_dict()[ensemble]
+
+            # Optional transformations
+            workflows = []
+            if use_pp_transforms:
+                try:
+                    workflows.extend(
+                        self.ensemble_handler.make_ensemble_pp_trans(ensemble)
+                    )
+                except Exception:
+                    logging.debug(
+                        "make_ensemble_pp_trans not available or failed; skipping"
+                    )
+            if pbc_corrections:
+                protein = u.select_atoms("protein")
+                water = u.select_atoms("resname SOL")
+                workflows.extend(
+                    [
+                        trans.unwrap(u.atoms),
+                        trans.center_in_box(protein, center="geometry"),
+                        trans.wrap(water, compound="residues"),
+                        trans.fit_rot_trans(protein, protein, weights="mass"),
+                    ]
+                )
+            if workflows:
+                u.trajectory.add_transformations(*workflows)
+
+            # Selection
+            sel_str = selection
+            if sel_str is None:
+                sel_str = self.ensemble_handler.path_dict[ensemble].get(
+                    "bp_selection_string", None
+                )
+            if not sel_str:
+                raise ValueError(
+                    f"No selection provided and no 'bp_selection_string' found for ensemble '{ensemble}'."
+                )
+
+            sel = u.select_atoms(sel_str)
+            if len(sel) == 0:
+                raise ValueError(
+                    f"Selection '{sel_str}' returned zero atoms for ensemble '{ensemble}'."
+                )
+
+            # Iterate frames and compute volumes
+            volumes = []
+            times = []
+            frames = []
+
+            for ts in u.trajectory:
+                pts = sel.positions.copy()
+                if method == "convex":
+                    vol = self._convex_hull_volume(pts)
+                else:
+                    vol = self._alpha_shape_volume(pts, alpha)
+                volumes.append(vol)
+                times.append(float(ts.time) if ts.time is not None else np.nan)
+                frames.append(int(ts.frame))
+
+            ensemble_df = pd.DataFrame(
+                {
+                    "frame": frames,
+                    "time_ps": times,
+                    "pocket_volume": volumes,
+                    "method": method,
+                    "alpha": (np.nan if method == "convex" else float(alpha)),
+                }
+            )
+            ensemble_df["timestep"] = self.ensemble_handler.get_timestep_from_universe(
+                key=ensemble
+            )
+            ensemble_df["ensemble"] = ensemble
+            feature_dfs.append(ensemble_df)
+
+        self.feature_df = pd.concat(feature_dfs, ignore_index=True)
+        return self.feature_df

@@ -621,7 +621,12 @@ def plot_eigenvalues(pca_object, n_components, save_path=None):
 
 
 def plot_pca_components(
-    pca_object, feature_df, num: int, colorby = 'ensemble', save_path=None, feature_column_keyword="DIST"
+    pca_object,
+    feature_df,
+    num: int,
+    colorby="ensemble",
+    save_path=None,
+    feature_column_keyword="DIST",
 ):
     """
     This does not work with a lot of features. Check why -> TODO

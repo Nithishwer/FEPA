@@ -9,7 +9,7 @@ from MDAnalysis.analysis.base import AnalysisBase
 from MDAnalysis.analysis.results import ResultsGroup, Results
 
 
-def get_water_occupancy_in_sphere_per_frame(frame_index, atomgroup, bp_selection_string, radius):
+def get_water_occupancy_in_sphere_per_frame(frame_index, atomgroup, bp_selection_string, radius, resname):
 
     # index the trajectory to set it to the frame_index frame
     atomgroup.universe.trajectory[frame_index]
@@ -19,7 +19,7 @@ def get_water_occupancy_in_sphere_per_frame(frame_index, atomgroup, bp_selection
     com = bp_atomgroup.center_of_mass()
     logging.info(f"Center of Mass (COM) of the binding site: {com}")
 
-    waters_near_com = atomgroup.select_atoms(f"resname SOL and point {com[0]} {com[1]} {com[2]} {radius}")
+    waters_near_com = atomgroup.select_atoms(f"resname {resname} and point {com[0]} {com[1]} {com[2]} {radius}")
     n_waters = len(waters_near_com.residues)
 
     return n_waters
@@ -34,12 +34,13 @@ class WaterOccupancyAnalysis(AnalysisBase):
     # def _get_aggregator(self):
     #   return ResultsGroup(lookup={'timeseries': ResultsGroup.ndarray_vstack})
 
-    def __init__(self, atomgroup, bp_selection_string, radius, verbose, **kwargs):
+    def __init__(self, atomgroup, bp_selection_string, radius, verbose,resname='SOL', **kwargs):
         trajectory = atomgroup.universe.trajectory
         super(WaterOccupancyAnalysis, self).__init__(trajectory,verbose=verbose)
         self.atomgroup = atomgroup
         self.bp_selection_string = bp_selection_string
         self.radius = radius
+        self.resname = resname
  
     def _prepare(self):
         '''
@@ -67,6 +68,7 @@ class WaterOccupancyAnalysis(AnalysisBase):
             atomgroup=self.atomgroup,
             bp_selection_string=self.bp_selection_string,
             radius=self.radius,
+            resname=self.resname
         )
         self.results[self._frame_index,0] = self._ts.frame
         self.results[self._frame_index,1] = self._trajectory.time

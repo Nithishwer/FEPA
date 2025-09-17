@@ -80,20 +80,20 @@ class EnsembleHandler:
         """
         return self.path_dict
 
-    def dump_gro(self, ensemble: str, timestep: float, save_path: str) -> None:
+    def dump_frames(self, ensemble: str, timestep: float, save_path: str) -> None:
         """
-        Dumps the universe to a GRO file.
+        Dumps the universe to a file.
 
         Args:
             key (str): Key for the universe in the universe dictionary.
-            output_path (str): Path to the output GRO file.
+            output_path (str): Path to the output file.
         """
         for ts in self.universe_dict[ensemble].trajectory:
             if ts.time == timestep:
                 self.universe_dict[ensemble].trajectory[ts.frame]
                 break
         logging.info(
-            f"Dumping GRO file for {ensemble} at timestep {self.universe_dict[ensemble].trajectory.frame} to {save_path}"
+            f"Dumping file for {ensemble} at timestep {self.universe_dict[ensemble].trajectory.frame} to {save_path}"
         )
         with mda.Writer(
             save_path, n_atoms=self.universe_dict[ensemble].atoms.n_atoms
