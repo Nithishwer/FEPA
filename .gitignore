@@ -1,3 +1,4 @@
 wdir/
 fepa.egg-info/
 **/__pycache__/
+.vscode/
