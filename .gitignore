@@ -1,3 +1,21 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Environments
+.env
+venv/
+
+# IDE files
+.vscode/
+.idea/
+
+# FEPA files
 wdir/
-fepa.egg-info/
-**/__pycache__/
