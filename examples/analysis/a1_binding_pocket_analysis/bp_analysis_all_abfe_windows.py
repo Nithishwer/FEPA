@@ -43,10 +43,6 @@ def main():
             apo=True,
         )
 
-        # Remove apo 1 and 2
-        path_dict.pop(f"apo_1")
-        path_dict.pop(f"apo_2")
-
         # Load trajectories
         logging.info("Loading trajectories for compound %s ...", cmp)
         ensemble_handler = EnsembleHandler(path_dict)
