@@ -6,7 +6,7 @@ import logging
 import os
 import json
 from abc import ABC, abstractmethod
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Literal
 import pandas as pd
 import multiprocessing
 import numpy as np
