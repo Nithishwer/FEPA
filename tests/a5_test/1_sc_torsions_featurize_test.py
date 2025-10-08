@@ -1,216 +1,284 @@
-import warnings
-from Bio import BiopythonDeprecationWarning
-warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
-warnings.filterwarnings("ignore", category=DeprecationWarning, module="MDAnalysis.*")
-warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*importlib.*")
+"""
+End-to-end pytest for the FEPA side chain torsions featurization pipeline.
 
+This test runs the actual FEPA pipeline without mocks and validates:
+1. Pipeline runs successfully with minimal test data
+2. All expected files are produced
+3. Generated CSV matches golden truth CSV exactly
+
+This test is completely self-contained and independent.
+"""
+
+import logging
 import os
-import importlib.util
+import tempfile
+import shutil
 from pathlib import Path
+import re
+import math
+
 import pandas as pd
-import pandas.testing as pdt
+import numpy as np
+import pytest
 import matplotlib
-matplotlib.use("Agg")
+matplotlib.use("Agg")  # Use non-interactive backend for testing
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.spatial.distance import jensenshannon
 
-DECIMALS = 6
-RTOL = 1e-12
-ATOL = 1e-12
+# Import FEPA package components
+from fepa.utils.file_utils import load_config
+from fepa.core.ensemble_handler import EnsembleHandler
+from fepa.utils.path_utils import (
+    load_paths_for_compound,
+    load_abfe_paths_for_compound,
+    load_paths_for_apo,
+)
+from fepa.core.featurizers import SideChainTorsionsFeaturizer
+from fepa.utils.dimred_utils import cluster_pca
+from fepa.core.dim_reducers import PCADimReducer
+from fepa.core.visualizers import (
+    DimRedVisualizer,
+    plot_eigenvalues,
+    plot_pca_components,
+    plot_entropy_heatmaps,
+)
+from fepa.utils.dimred_utils import (
+    cluster_pca,
+    get_ensemble_center,
+    make_ensemble_center_df,
+)
 
-# ---------- discovery ----------
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
-def _looks_like_script(path: Path) -> bool:
-    try:
-        txt = path.read_text(encoding="utf-8", errors="ignore")
-    except Exception:
-        return False
-    need = [
-        "def main(", "SideChainTorsionsFeaturizer",
-        "load_abfe_paths_for_compound", "EnsembleHandler",
-        "plot_sidechain_distribution", "plot_sidechain_evolution",
+
+def _abspath_templates(config: dict, repo_root: Path) -> dict:
+    """Prefix repo_root to any relative templates in the test config."""
+    keys = [
+        "abfe_window_path_template",
+        "vanilla_path_template",
+        "vanilla_path_template_old",
+        "apo_path_template",
     ]
-    return all(s in txt for s in need)
+    out = dict(config)
+    for k in keys:
+        if k in out:
+            p = Path(out[k])
+            if not p.is_absolute():
+                out[k] = str((repo_root / p).resolve())
+    return out
 
-def _discover_script(repo_root: Path) -> Path:
-    v = os.environ.get("FEPA_SCT_SCRIPT")
-    if v:
-        p = (repo_root / v) if not os.path.isabs(v) else Path(v)
-        if p.exists():
-            return p
-    scripts_dir = repo_root / "scripts"
-    cands = [p for p in scripts_dir.glob("*.py") if _looks_like_script(p)]
-    if not cands:
-        skip = {"venv",".venv","site-packages","build","dist",".git"}
-        for f in repo_root.rglob("*.py"):
-            if any(part in skip for part in f.parts):
-                continue
-            if _looks_like_script(f):
-                cands.append(f)
-    if not cands:
-        raise FileNotFoundError("Cannot find the original script. Set FEPA_SCT_SCRIPT or put it under scripts/.")
-    return sorted(cands, key=lambda x: str(x))[0]
 
-def _load_module(py_path: Path):
-    spec = importlib.util.spec_from_file_location("orig_sct_mod", str(py_path))
-    mod = importlib.util.module_from_spec(spec)
-    assert spec and spec.loader
-    spec.loader.exec_module(mod)  # type: ignore[attr-defined]
-    return mod
-
-# ---------- helpers ----------
-def _golden_csv_for_cmp(repo_root: Path, cmp: str) -> Path:
-    return repo_root / "tests" / "test_data" / "5_expected" / cmp / "SideChainTorsions_features.csv"
-
-def _round_numeric(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    num = df.select_dtypes(include="number").columns
-    if len(num):
-        df[num] = df[num].round(DECIMALS)
-    return df
-
-def _stable_sort(df: pd.DataFrame) -> pd.DataFrame:
-    cols = df.columns.tolist()
-    keys = [c for c in ("ensemble", "timestep") if c in cols]
-    keys += sorted([c for c in cols if c.startswith("CHI")])
-    return df.sort_values(keys).reset_index(drop=True)
-
-def _assert_schema(df: pd.DataFrame, where: str):
-    need = {"timestep", "ensemble"}
-    assert need.issubset(df.columns), f"{where} missing columns {need - set(df.columns)}"
-    assert any(c.startswith("CHI") for c in df.columns), f"{where} has no CHI* columns"
-
-# ---------- the test ----------
-def test_sct_script_mdanalysis_smoke_realdata(monkeypatch, tmp_path):
-    """
-    Uses *real truncated data* from tests/test_data/1:
-      - apo/prod.xtc + prod.tpr + npt.gro
-      - vanilla_rep_1/prod.xtc + prod.tpr + npt.gro
-
-    We return those via a monkeypatched load_abfe_paths_for_compound (with keys
-    that the original script expects), construct real MDAnalysis Universes to
-    exercise traj/top IO, and still copy the golden CSV for bitwise-stable CI.
-    """
-    repo_root = _repo_root()
-    script = _discover_script(repo_root)
-    mod = _load_module(script)
-
-    # --- use the real test config but ensure compounds[1:] not empty ---
-    from fepa.utils.file_utils import load_config as _real_load_config
-    def _fake_load_config(_ignored_path):
-        cfg_path = repo_root / "tests" / "test_config" / "config.json"
-        cfg = _real_load_config(str(cfg_path))
-        comps = list(map(str, cfg.get("compounds", [])))
-        if len(comps) <= 1:
-            cfg["compounds"] = ["__DUMMY__"] + comps
-        return cfg
-    monkeypatch.setattr(mod, "load_config", _fake_load_config, raising=True)
-
-    cfg = _fake_load_config(None)
-    comps_all = list(map(str, cfg.get("compounds", [])))
-    processed = comps_all[1:] if len(comps_all) >= 2 else comps_all
-    assert processed, "Adjusted config still yields no compounds to process."
-    cmp = processed[0]  # e.g., "1"
-
-    # --- build a path_dict from your truncated data on disk ---
-    data_root = repo_root / "tests" / "test_data" / cmp
-    apo_dir = data_root / "apo"
-    van_dir = data_root / "vanilla_rep_1"
-
-    # sanity on files present
-    need = [
-        apo_dir / "npt.gro",
-        apo_dir / "prod.tpr",
-        apo_dir / "prod.xtc",
-        van_dir / "npt.gro",
-        van_dir / "prod.tpr",
-        van_dir / "prod.xtc",
-    ]
-    missing = [p for p in need if not p.exists()]
-    assert not missing, f"Missing expected truncated files: {missing}"
-
-    # map them to the ensemble keys the script uses
-    # (we fake an ABFE-like key for vanilla so downstream code doesn't care)
-    path_dict = {
-        "apo_1": {
-            "top": str(apo_dir / "npt.gro"),
-            "tpr": str(apo_dir / "prod.tpr"),
-            "xtc": str(apo_dir / "prod.xtc"),
-        },
-        f"{cmp}_van_1_vdw.20": {
-            "top": str(van_dir / "npt.gro"),
-            "tpr": str(van_dir / "prod.tpr"),
-            "xtc": str(van_dir / "prod.xtc"),
-        },
-    }
-
-    def _fake_load_abfe_paths(config, cmp, **kwargs):
-        # kwargs: van_list, leg_window_list, apo=True, etc. — ignored here.
-        return path_dict
-    monkeypatch.setattr(mod, "load_abfe_paths_for_compound", _fake_load_abfe_paths, raising=True)
-
-    # --- EnsembleHandler that actually instantiates MDAnalysis universes ---
-    import MDAnalysis as mda
-    class _EH:
-        def __init__(self, paths): self.paths = paths; self.universes = {}
-        def make_universes(self):
-            for key, val in self.paths.items():
-                top = val.get("top"); xtc = val.get("xtc")
-                assert os.path.exists(top) and os.path.exists(xtc), f"Missing IO for {key}"
-                # Prefer TPR if present (better unitcell info), else GRO
-                tpr = val.get("tpr")
-                if tpr and os.path.exists(tpr):
-                    u = mda.Universe(tpr, xtc)
-                else:
-                    u = mda.Universe(top, xtc)
-                # smoke checks
-                assert u.atoms.n_atoms > 0, f"No atoms for {key}"
-                assert u.trajectory.n_frames > 0, f"No frames for {key}"
-                self.universes[key] = u
-    monkeypatch.setattr(mod, "EnsembleHandler", _EH, raising=True)
-
-    # --- Featurizer: iterate frames to exercise MDAnalysis; then write golden CSV ---
-    class _Featurizer:
-        def __init__(self, ensemble_handler): self.eh = ensemble_handler
-        def featurize(self):
-            # touch all universes & frames
-            total_frames = 0
-            for key, u in self.eh.universes.items():
-                nf = 0
-                for _ in u.trajectory: nf += 1
-                assert nf == u.trajectory.n_frames, f"Iter mismatch for {key}"
-                total_frames += nf
-            assert total_frames > 0
-        def save_features(self, outdir, overwrite=False):
-            outdir = Path(outdir)
-            outdir.mkdir(parents=True, exist_ok=True)
-            gpath = _golden_csv_for_cmp(repo_root, outdir.name)
-            assert gpath.exists(), f"Golden CSV not found for cmp={outdir.name}: {gpath}"
-            df = pd.read_csv(gpath)
-            (outdir / "SideChainTorsions_features.csv").write_text(df.to_csv(index=False))
-    monkeypatch.setattr(mod, "SideChainTorsionsFeaturizer", _Featurizer, raising=True)
-
-    # --- run script in tmp sandbox and compare CSVs exactly ---
-    monkeypatch.chdir(tmp_path)
-    mod.main()
-
-    for c in processed:
-        tmp_csv = tmp_path / "wdir" / c / "SideChainTorsions_features.csv"
-        gld_csv = _golden_csv_for_cmp(repo_root, c)
-        assert tmp_csv.exists(), f"Script did not produce tmp CSV for {c}"
-        assert gld_csv.exists(), f"Missing golden CSV for {c}"
-
-        tmp_df = pd.read_csv(tmp_csv)
-        gld_df = pd.read_csv(gld_csv)
-
-        _assert_schema(tmp_df, f"tmp CSV for {c}")
-        _assert_schema(gld_df, f"golden CSV for {c}")
-        assert set(tmp_df.columns) == set(gld_df.columns), \
-            f"Column mismatch for {c}\nTmp: {sorted(tmp_df.columns)}\nGolden: {sorted(gld_df.columns)}"
-
-        tmp_std = _stable_sort(_round_numeric(tmp_df)[sorted(tmp_df.columns)])
-        gld_std = _stable_sort(_round_numeric(gld_df)[sorted(gld_df.columns)])
-
-        pdt.assert_frame_equal(
-            tmp_std, gld_std, check_dtype=False, rtol=RTOL, atol=ATOL, check_like=False
+class TestFEPAPipelineE2E:
+    """End-to-end test of the FEPA pipeline."""
+    
+    @pytest.fixture
+    def test_config_path(self):
+        """Path to test configuration file."""
+        return Path(__file__).parent.parent / "test_config" / "config.json"
+    
+    @pytest.fixture
+    def expected_csv_path(self):
+        """Path to golden truth CSV file."""
+        return Path(__file__).parent.parent / "test_data" / "5_expected" / "1" / "SideChainTorsions_features.csv"
+    
+    @pytest.fixture
+    def output_dir(self, tmp_path):
+        """Temporary output directory for test results."""
+        output_dir = tmp_path / "test_output" / "1"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        return output_dir
+    
+    def test_generated_csv_structure(self, test_config_path, output_dir, expected_csv_path):
+        """Test that generated CSV has correct structure."""
+        if not test_config_path.exists():
+            pytest.skip("Test config file not found")
+        
+        # Run the pipeline
+        config = load_config(str(test_config_path))
+        repo_root = Path(__file__).parent.parent.parent
+        config = _abspath_templates(config, repo_root)
+        
+        cmp = "1"
+        cmp_output_dir = output_dir
+        cmp_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Run pipeline steps
+        path_dict = load_abfe_paths_for_compound(
+            config,
+            cmp,
+            van_list=[1],
+            leg_window_list=[f"coul.{i:02}" for i in range(2)],
+            bp_selection_string="name CA and resid " + config["pocket_residues_string"],
+            apo=True,
         )
+        
+        ensemble_handler = EnsembleHandler(path_dict)
+        ensemble_handler.make_universes()
+        
+        sct_featurizer = SideChainTorsionsFeaturizer(ensemble_handler=ensemble_handler)
+        sct_featurizer.featurize()
+        sct_featurizer.save_features(str(cmp_output_dir), overwrite=True)
+        
+        # Check generated CSV
+        generated_csv_file = cmp_output_dir / "SideChainTorsions_features.csv"
+        assert generated_csv_file.exists()
+        
+        generated_df = pd.read_csv(generated_csv_file)
+        
+        # Verify structure
+        assert 'timestep' in generated_df.columns
+        assert 'ensemble' in generated_df.columns
+        
+        # Check for CHI columns
+        chi_columns = [col for col in generated_df.columns if 'CHI' in col]
+        assert len(chi_columns) > 0, "No CHI columns found in generated CSV"
+        
+        # Check data types
+        ts = generated_df['timestep']
+        assert np.issubdtype(ts.dtype, np.number), f"timestep dtype must be numeric, got {ts.dtype}"
+        # if it's float, allow only values that are close to integers
+        if np.issubdtype(ts.dtype, np.floating):
+            assert np.allclose(ts.values, np.round(ts.values), atol=1e-9), "timestep values should be integer-like"
+        # ensemble should be string-like
+        assert (generated_df['ensemble'].dtype == 'object') or pd.api.types.is_string_dtype(generated_df['ensemble'])
+        
+        # Check for reasonable data ranges
+        assert generated_df['timestep'].min() >= 0
+        assert len(generated_df['ensemble'].unique()) > 0
+        
+        # Verify ensembles follow expected naming
+        ensembles = generated_df['ensemble'].unique()
+        for ensemble in ensembles:
+            assert isinstance(ensemble, str)
+            assert len(ensemble) > 0
+    
+    def test_csv_matches_golden_truth(self, test_config_path, output_dir, expected_csv_path):
+        """Test that generated CSV matches golden truth CSV exactly."""
+        if not test_config_path.exists():
+            pytest.skip("Test config file not found")
+        
+        if not expected_csv_path.exists():
+            pytest.skip("Golden truth CSV file not found")
+        
+        # Run the pipeline
+        config = load_config(str(test_config_path))
+        repo_root = Path(__file__).parent.parent.parent
+        config = _abspath_templates(config, repo_root)
+        
+        cmp = "1"
+        cmp_output_dir = output_dir
+        cmp_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Run pipeline steps
+        path_dict = load_abfe_paths_for_compound(
+            config,
+            cmp,
+            van_list=[1],
+            leg_window_list=[f"coul.{i:02}" for i in range(2)],
+            bp_selection_string="name CA and resid " + config["pocket_residues_string"],
+            apo=True,
+        )
+        
+        ensemble_handler = EnsembleHandler(path_dict)
+        ensemble_handler.make_universes()
+        
+        sct_featurizer = SideChainTorsionsFeaturizer(ensemble_handler=ensemble_handler)
+        sct_featurizer.featurize()
+        sct_featurizer.save_features(str(cmp_output_dir), overwrite=True)
+        
+        # Load both CSVs
+        generated_csv_file = cmp_output_dir / "SideChainTorsions_features.csv"
+        assert generated_csv_file.exists()
+        
+        generated_df = pd.read_csv(generated_csv_file)
+        expected_df = pd.read_csv(expected_csv_path)
+        
+        # Compare shapes
+        assert generated_df.shape == expected_df.shape, f"Shape mismatch: {generated_df.shape} vs {expected_df.shape}"
+        
+        # Compare columns
+        assert list(generated_df.columns) == list(expected_df.columns), "Column mismatch"
+        
+        # Compare data exactly (values must be identical)
+        for col in generated_df.columns:
+            if generated_df[col].dtype in ['float64', 'float32']:
+                # For float columns, check exact equality (no tolerance)
+                assert np.array_equal(generated_df[col].values, expected_df[col].values, equal_nan=True), \
+                    f"Float column {col} values don't match exactly"
+            else:
+                # For non-float columns, check exact equality
+                pd.testing.assert_series_equal(generated_df[col], expected_df[col], check_names=False), \
+                    f"Non-float column {col} values don't match exactly"
+        
+        logging.info("Generated CSV matches golden truth CSV exactly")
+    
+    def test_main_pipeline_workflow(self, test_config_path, tmp_path):
+        """Test the complete main pipeline workflow."""
+        if not test_config_path.exists():
+            pytest.skip("Test config file not found")
+        
+        # Create output directory structure
+        analysis_output_dir = tmp_path / "tests" / "test_data" / "5_expected"
+        analysis_output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load config
+        config = load_config(str(test_config_path))
+        repo_root = Path(__file__).parent.parent.parent
+        config = _abspath_templates(config, repo_root)
+        
+        # Process each compound (should be just "1")
+        for cmp in config["compounds"]:
+            logging.info(f"Analyzing compound {cmp}")
+            
+            # Create output directory
+            cmp_output_dir = analysis_output_dir / cmp
+            cmp_output_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Prepare paths
+            logging.info(f"Loading paths for compound {cmp}")
+            path_dict = load_abfe_paths_for_compound(
+                config,
+                cmp,
+                van_list=[1],
+                leg_window_list=[f"coul.{i:02}" for i in range(2)],
+                bp_selection_string="name CA and resid " + config["pocket_residues_string"],
+                apo=True,
+            )
+            
+            # Load trajectories
+            logging.info(f"Loading trajectories for compound {cmp}")
+            ensemble_handler = EnsembleHandler(path_dict)
+            ensemble_handler.make_universes()
+            
+            # Featurize
+            logging.info("Featurizing side chain torsions")
+            sct_featurizer = SideChainTorsionsFeaturizer(ensemble_handler=ensemble_handler)
+            sct_featurizer.featurize()
+            
+            # Save features
+            logging.info(f"Saving features for compound {cmp}")
+            sct_featurizer.save_features(str(cmp_output_dir), overwrite=True)
+            
+            # Verify output was created
+            csv_file = cmp_output_dir / "SideChainTorsions_features.csv"
+            assert csv_file.exists(), f"CSV file not created for compound {cmp}"
+            assert csv_file.stat().st_size > 0, f"CSV file is empty for compound {cmp}"
+            
+            logging.info(f"Pipeline completed successfully for compound {cmp}")
+        
+        # Verify output directory structure
+        assert analysis_output_dir.exists()
+        
+        # Check if compound directory was created
+        compound_dir = analysis_output_dir / "1"
+        if compound_dir.exists():
+            csv_file = compound_dir / "SideChainTorsions_features.csv"
+            if csv_file.exists():
+                assert csv_file.stat().st_size > 0, "Generated CSV file is empty"
+                logging.info(f"Main pipeline produced CSV file: {csv_file}")
+
+
+if __name__ == "__main__":
+    # Run the tests
+    pytest.main([__file__, "-v", "--tb=short"])
