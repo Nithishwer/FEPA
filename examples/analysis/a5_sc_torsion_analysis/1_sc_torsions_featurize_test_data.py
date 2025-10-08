@@ -1,20 +1,40 @@
-import logging, os, re, math
+import logging
+import os
 import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 from pathlib import Path
-from scipy.spatial.distance import jensenshannon
-
 from fepa.utils.file_utils import load_config
 from fepa.core.ensemble_handler import EnsembleHandler
-from fepa.utils.path_utils import load_abfe_paths_for_compound
-from fepa.core.featurizers import SideChainTorsionsFeaturizer  
-
+from fepa.utils.path_utils import (
+    load_paths_for_compound,
+    load_abfe_paths_for_compound,
+    load_paths_for_apo,
+)
+from fepa.core.featurizers import SideChainTorsionsFeaturizer
+from fepa.utils.dimred_utils import cluster_pca
+from fepa.core.dim_reducers import PCADimReducer
+from fepa.core.visualizers import (
+    DimRedVisualizer,
+    plot_eigenvalues,
+    plot_pca_components,
+    plot_entropy_heatmaps,
+)
+from scipy.spatial.distance import jensenshannon
+from fepa.utils.dimred_utils import (
+    cluster_pca,
+    get_ensemble_center,
+    make_ensemble_center_df,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
+import re
+import math
+import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
+import numpy as np
+
 
 def _abspath_templates(config: dict, repo_root: Path) -> dict:
     """Prefix repo_root to any relative templates in the test config."""
@@ -31,7 +51,6 @@ def _abspath_templates(config: dict, repo_root: Path) -> dict:
             if not p.is_absolute():
                 out[k] = str((repo_root / p).resolve())
     return out
-
 
 def plot_sidechain_distribution(
     df, ensembles, output_file="ensemble_histograms.png", ncols=4, colorby="ensemble"
@@ -226,7 +245,7 @@ def main():
             config,
             cmp,
             van_list=[1],
-            leg_window_list = [f"coul.{i:02}" for i in range(2)],  # coul.00, coul.01
+            leg_window_list = [f"coul.{i:02}" for i in range(2)], # [f"vdw.{i:02d}" for i in range(20, 21)],
             # + [f"coul.{i:02d}" for i in range(0, 11)]
             # + [f"rest.{i:02d}" for i in range(0, 12)],
             bp_selection_string="name CA and resid " + config["pocket_residues_string"],
@@ -247,195 +266,168 @@ def main():
         ensemble_handler.make_universes()
 
         ## Featurize
-        # logging.info("Featurizing binding pocket waters ...")
-        # sct_featurizer = SideChainTorsionsFeaturizer(ensemble_handler=ensemble_handler)
+        logging.info("Featurizing binding pocket waters ...")
+        sct_featurizer = SideChainTorsionsFeaturizer(ensemble_handler=ensemble_handler)
 
-        # sct_featurizer.featurize()
+        sct_featurizer.featurize()
 
-        # # Save features
-        # logging.info("Saving features for compound %s ...", cmp)
-        # sct_featurizer.save_features(cmp_output_dir, overwrite=True)
+        # Save features
+        logging.info("Saving features for compound %s ...", cmp)
+        sct_featurizer.save_features(cmp_output_dir, overwrite=True)
 
-        # Read features directly from golden CSV under tests/test_data/5_expected/<cmp>/
-        features_csv = (analysis_output_dir / cmp / "SideChainTorsions_features.csv")
-        if not features_csv.exists():
-            raise FileNotFoundError(
-                f"Expected features CSV not found for cmp={cmp}: {features_csv}"
-            )
-        features_df = pd.read_csv(features_csv)
-
-        features_df = pd.read_csv(
-            os.path.join(cmp_output_dir, f"SideChainTorsions_features.csv")
-        )
-
-        print(features_df.head())
-        offset = 567  # Offset for residue IDs
+        # features_df = pd.read_csv(
+        #     os.path.join(cmp_output_dir, f"SideChainTorsions_features.csv")
+        # )
 
         # # Get only the aminoacid residues of interest
-        residues_of_interest_without_offset = [
-            810,
-            655,
-            625,
-            628,
-            654,
-            658,
-            659,
-            809,
-            806,
-            785,
-            788,
-            802,
-            805,
-            744,
-            740,
-            781,
-        ]
-        residues_of_interest = [resid for resid in residues_of_interest_without_offset]
+        # residues_of_interest = [
+        #     853,
+        #     843,
+        #     278,
+        #     277,
+        #     270,
+        #     253,
+        #     250,
+        #     249,
+        #     246,
+        #     181,
+        #     177,
+        #     168,
+        #     66,
+        #     63,
+        #     13,
+        # ]
 
-        # Function to extract residue number
-        def get_resid(colname):
-            parts = colname.split()
-            if len(parts) >= 4 and parts[3].isdigit():
-                return int(parts[3]) 
-            return None
+        # # Function to extract residue number
+        # def get_resid(colname):
+        #     parts = colname.split()
+        #     if len(parts) >= 4 and parts[3].isdigit():
+        #         return int(parts[3])
+        #     return None
 
-        # Filter columns whose residue number is in resid_list
-        filtered_cols = [
-            col for col in features_df.columns if get_resid(col) in residues_of_interest
-        ] + ["timestep", "ensemble"]
+        # # Filter columns whose residue number is in resid_list
+        # filtered_cols = [
+        #     col for col in features_df.columns if get_resid(col) in residues_of_interest
+        # ] + ["timestep", "ensemble"]
 
-        # Create a new DataFrame with the filtered columns
-        filtered_features_df = features_df[filtered_cols]
+        # # Create a new DataFrame with the filtered columns
+        # filtered_features_df = features_df[filtered_cols]
 
-        # Function to get the simulation type
-        def get_sim_type(ensemble):
-            if "apo" in ensemble:
-                return "apo"
-            if "coul" in ensemble or "vdw" in ensemble or "rest" in ensemble:
-                match = re.search(r"van_(\d+)", ensemble)
-                if match:
-                    return f"abfe"
-                else:
-                    raise ValueError(f"van not found in ensemble: {ensemble}")
-            else:
-                return "holo"
+        # # Function to get the simulation type
+        # def get_sim_type(ensemble):
+        #     if "apo" in ensemble:
+        #         return "apo"
+        #     if "coul" in ensemble or "vdw" in ensemble or "rest" in ensemble:
+        #         match = re.search(r"van_(\d+)", ensemble)
+        #         if match:
+        #             return f"abfe"
+        #         else:
+        #             raise ValueError(f"van not found in ensemble: {ensemble}")
+        #     else:
+        #         return "holo"
 
-        def add_offset(colname, offset=0):
-            parts = colname.split()
-            if len(parts) == 4:
-                try:
-                    resid = int(parts[3])
-                    return f"{parts[0]} {parts[1]} {parts[2]} {resid + offset}"
-                except ValueError:
-                    pass  # non-numeric residue ID, leave as is
-            return colname
+        # # Save the filtered DataFrame
+        # filtered_features_df.to_csv(
+        #     os.path.join(
+        #         cmp_output_dir, f"{cmp}_filtered_SideChainTorsions_features.csv"
+        #     ),
+        #     index=False,
+        # )
 
-        filtered_features_df.columns = [
-            add_offset(col, offset=offset) for col in filtered_features_df.columns
-        ]
+        # # Plot the distributions
+        # plot_sidechain_distribution(
+        #     df=filtered_features_df,
+        #     ensembles=[
+        #         "apo_1",
+        #         "apo_2",
+        #         "apo_3",
+        #     ],
+        #     output_file=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_histograms_apo.png"
+        #     ),
+        #     ncols=4,
+        # )
 
-        # Save the filtered DataFrame
-        filtered_features_df.to_csv(
-            os.path.join(
-                cmp_output_dir, f"{cmp}_filtered_SideChainTorsions_features.csv"
-            ),
-            index=False,
-        )
+        # plot_sidechain_distribution(
+        #     df=filtered_features_df,
+        #     ensembles=[
+        #         f"{cmp}_van_1_vdw.20",
+        #         f"{cmp}_van_2_vdw.20",
+        #         f"{cmp}_van_3_vdw.20",
+        #     ],
+        #     output_file=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_histograms_vdw20.png"
+        #     ),
+        #     ncols=4,
+        # )
 
-        # Plot the distributions
-        plot_sidechain_distribution(
-            df=filtered_features_df,
-            ensembles=[
-                "apo_1",
-                #"apo_2",
-                #"apo_3",
-            ],
-            output_file=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_histograms_apo.png"
-            ),
-            ncols=4,
-        )
+        # # Plot the time evolution of CHI-related variables
+        # plot_sidechain_evolution(
+        #     df=filtered_features_df,
+        #     ensemble_list=[
+        #         "apo_1",
+        #         "apo_2",
+        #         "apo_3",
+        #     ],
+        #     figsize=(20, 15),
+        #     max_cols=4,
+        #     save_path=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_evolution_apo.png"
+        #     ),
+        # )
 
-        plot_sidechain_distribution(
-            df=filtered_features_df,
-            ensembles=[
-                f"{cmp}_van_1_vdw.20",
-                #f"{cmp}_van_2_vdw.20",
-                #f"{cmp}_van_3_vdw.20",
-            ],
-            output_file=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_histograms_vdw20.png"
-            ),
-            ncols=4,
-        )
+        # plot_sidechain_evolution(
+        #     df=filtered_features_df,
+        #     ensemble_list=[
+        #         f"{cmp}_van_1_vdw.20",
+        #         f"{cmp}_van_2_vdw.20",
+        #         f"{cmp}_van_3_vdw.20",
+        #     ],
+        #     figsize=(20, 15),
+        #     max_cols=4,
+        #     save_path=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_evolution_vdw20.png"
+        #     ),
+        # )
 
-        # Plot the time evolution of CHI-related variables
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                "apo_1",
-                #"apo_2",
-                #"apo_3",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_apo.png"
-            ),
-        )
+        # plot_sidechain_evolution(
+        #     df=filtered_features_df,
+        #     ensemble_list=[
+        #         f"{cmp}_van_1",
+        #         f"{cmp}_van_2",
+        #         f"{cmp}_van_3",
+        #     ],
+        #     figsize=(20, 15),
+        #     max_cols=4,
+        #     save_path=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_evolution_vanilla.png"
+        #     ),
+        # )
 
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                f"{cmp}_van_1_vdw.20",
-                #f"{cmp}_van_2_vdw.20",
-                #f"{cmp}_van_3_vdw.20",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_vdw20.png"
-            ),
-        )
+        # # Annotate sim_type for features_df
+        # filtered_features_df["sim_type"] = filtered_features_df["ensemble"].apply(
+        #     get_sim_type
+        # )
 
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                f"{cmp}_van_1",
-                #f"{cmp}_van_2",
-                #f"{cmp}_van_3",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_vanilla.png"
-            ),
-        )
+        # plot_sidechain_distribution(
+        #     df=filtered_features_df,
+        #     ensembles=["abfe", "apo"],
+        #     colorby="sim_type",
+        #     output_file=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_histograms_simtype_abfe_apo.png"
+        #     ),
+        #     ncols=4,
+        # )
 
-        # Annotate sim_type for features_df
-        filtered_features_df["sim_type"] = filtered_features_df["ensemble"].apply(
-            get_sim_type
-        )
-
-        plot_sidechain_distribution(
-            df=filtered_features_df,
-            ensembles=["abfe", "apo"],
-            colorby="sim_type",
-            output_file=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_histograms_simtype_abfe_apo.png"
-            ),
-            ncols=4,
-        )
-
-        plot_sidechain_distribution(
-            df=filtered_features_df,
-            ensembles=["holo", "apo"],
-            colorby="sim_type",
-            output_file=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_histograms_simtype_holo_apo.png"
-            ),
-            ncols=4,
-        )
+        # plot_sidechain_distribution(
+        #     df=filtered_features_df,
+        #     ensembles=["holo", "apo"],
+        #     colorby="sim_type",
+        #     output_file=os.path.join(
+        #         cmp_output_dir, f"{cmp}_sidechain_histograms_simtype_holo_apo.png"
+        #     ),
+        #     ncols=4,
+        # )
 
 
 if __name__ == "__main__":
