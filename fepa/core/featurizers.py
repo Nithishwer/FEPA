@@ -26,7 +26,9 @@ from fepa.utils.BAT_utils import read_BAT
 from fepa.utils.water_utils import WaterOccupancyAnalysis
 from fepa.core.ensemble_handler import EnsembleHandler
 from MDAnalysis import transformations as trans
-
+from collections import defaultdict
+from typing import Literal
+from scipy.spatial import ConvexHull, Delaunay
 
 class BaseFeaturizer(ABC):
     """Base class for featurizers"""
@@ -618,7 +620,7 @@ class BindingPocketVolumeFeaturizer(BaseFeaturizer):
                 keep[i] = True
 
         # boundary faces occur exactly once among kept tets
-        from collections import defaultdict
+
 
         face_count = defaultdict(int)
         face_owner = {}
