@@ -19,3 +19,6 @@ venv/
 
 # FEPA files
 wdir/
+
+# Temporary files 
+tests/test_data/**/.*.xtc_offsets.npz
