@@ -19,3 +19,8 @@ venv/
 
 # FEPA files
 wdir/
+
+# Test data generation scripts
+examples/analysis/a6_ligand_conformation_analysis/*test_data.py
+examples/analysis/a3_inter_apo_bp_analysis/*test_data.py
+examples/analysis/a4_apo_holo_bp_analysis/*test_data.py
