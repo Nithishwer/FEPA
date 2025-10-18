@@ -1,27 +1,24 @@
 # tests/test_fepa_integration.py
 """
-End-to-end FEPA integration test that REPRODUCES the original script's behavior
-*directly in this test file* by calling the same FEPA APIs and libraries.
-
-Mirrored from the original script:
-- Loads FEPA tests config at /biggin/b230/magd5710/Documents/FEPA/tests/test_config/config.json
-- Uses load_abfe_paths_for_compound with van_list=[1], leg_window_list=["coul.00","coul.01"], apo=False
-- Builds universes via EnsembleHandler, checks binding-pocket residue consistency
-- Infers ligand resname (config override else heuristic, else "UNK"), selects heavy atoms
-- Clusters ligand conformations with mdaencore.DBSCAN, dumps centroid frames to PDB
-- Writes cluster assignment CSV "{cmp}_conformation_cluster_df.csv"
-
-Reference test data path (derived identically to the script):
-  repo_root = Path("../../FEPA")
-  expected CSV: repo_root / "tests/test_data/6_expected" / <cmp> / f"{cmp}_conformation_cluster_df.csv"
-
+- No persistent files: all outputs are written only under pytest's tmp_path.
+- Warnings silenced globally and at test level.
+- Inputs are read from the same locations the original script expects.
+- One main test compares our temporary CSV against the repository's expected CSV,
+  and asserts a temporary PDB centroid file exists.
 """
 
 from __future__ import annotations
+import sys as _sys
+import os as _os
+import warnings as _warnings
 
-import logging
+_sys.dont_write_bytecode = True
+_os.environ["PYTHONDONTWRITEBYTECODE"] = "1"
+_warnings.filterwarnings("ignore")
+
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
+import logging
 
 import numpy as np
 import pandas as pd
@@ -34,270 +31,300 @@ from fepa.utils.file_utils import load_config
 from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.utils.md_utils import check_bp_residue_consistency
 
-# Module-level logger and constants (only two functions below).
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Common non-ligand residue names excluded when inferring a ligand resname
-_COMMON_NON_LIG = {
-    # protein
-    "ALA",
-    "ARG",
-    "ASN",
-    "ASP",
-    "CYS",
-    "GLN",
-    "GLU",
-    "GLY",
-    "HIS",
-    "ILE",
-    "LEU",
-    "LYS",
-    "MET",
-    "PHE",
-    "PRO",
-    "SER",
-    "THR",
-    "TRP",
-    "TYR",
-    "VAL",
 
-    # solvent/ions/lipids
-    "SOL",
-    "HOH",
-    "TIP3",
-    "NA",
-    "K",
-    "CL",
-    "CLA",
-    "POT",
-    "MG",
-    "CA",
-    "POPC",
-    "POPE",
-    "POPS",
-    "CHL1",
-    "CHOL",
-    "DOPC",
-    "DPPC",
-}
+def _detect_repo_root() -> Path:
+    env_root = _os.getenv("FEPA_REPO_ROOT")
+    if env_root:
+        env_path = Path(env_root).expanduser().resolve()
+        if env_path.is_dir():
+            return env_path
+
+    here = Path(__file__).resolve()
+    for anc in here.parents:
+        if (anc / "tests").is_dir():
+            return anc
+    return here.parents[2]
 
 
-def run_pipeline(output_dir: Path) -> Dict[str, Path]:
-    """
-    Reproduce the original pipeline end-to-end, but write all outputs
-    (CSV + PDBs) into `output_dir` (per-compound subdirs). Inputs are
-    read from the exact same locations as in the original script.
-
-    Returns:
-        {
-          "csv_path": Path to produced CSV for the first compound,
-          "pdb_path": Path to one produced PDB centroid for the first compound,
-          "ref_csv_path": Path to reference CSV under tests/test_data/6_expected,
-          "compound": The first compound name processed
-        }
-    """
-    logger.info("Starting FEPA pipeline reproduction...")
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    # --- Inputs identical to original script (READ-ONLY) ---
-    repo_root = Path("/biggin/b230/magd5710/Documents/FEPA").resolve()
-    config_path = repo_root / "tests" / "test_config" / "config.json"
-    expected_root = repo_root / "tests" / "test_data" / "6_expected"
-
-    # Load config and absolutize templates in-memory (same keys as original)
-    config = load_config(str(config_path))
-    for k in [
+def _abspath_templates(cfg: dict, repo_root: Path) -> dict:
+    """Prefix repo_root to any relative templates in the FEPA config (in-memory only)."""
+    out = dict(cfg)
+    for k in (
         "abfe_window_path_template",
         "vanilla_path_template",
         "vanilla_path_template_old",
         "apo_path_template",
-    ]:
-        if k in config:
-            p = Path(config[k])
+    ):
+        if k in out:
+            p = Path(out[k])
             if not p.is_absolute():
-                config[k] = str((repo_root / p).resolve())
+                out[k] = str((repo_root / p).resolve())
+    return out
 
-    van_list = [1]
-    leg_window_list = ["coul.00", "coul.01"]
 
-    compounds: List[str] = list(config["compounds"])
+@pytest.fixture(scope="session")
+def repo_root() -> Path:
+    """
+    FEPA repository root resolved **without** hardcoded absolute paths.
+    Allows override via FEPA_REPO_ROOT.
+    """
+    root = _detect_repo_root()
+    logger.info("Using FEPA repo root (relative): %s", root)
+    return root
+
+
+@pytest.fixture(scope="session")
+def config_and_first_cmp(repo_root: Path) -> Tuple[dict, str, Path]:
+    """
+    Load FEPA test config and pick a compound.
+    Return (config, first_cmp, expected_root) where expected_root holds reference CSVs.
+    All paths resolved **relative to repo_root**.
+    """
+    cfg_path = (repo_root / "tests" / "test_config" / "config.json").resolve()
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Config not found: {cfg_path}")
+    cfg = load_config(str(cfg_path))
+
+    # Absolutize any relative templates in-memory to mirror FEPA path resolution.
+    cfg = _abspath_templates(cfg, repo_root)
+
+    compounds: List[str] = list(cfg.get("compounds", []))
     if not compounds:
         raise RuntimeError("No compounds found in FEPA test config.")
-    # Process in stable order and use the first compound for return values
     compounds.sort()
     first_cmp = compounds[0]
 
-    produced_csv_path: Path | None = None
-    produced_pdb_path: Path | None = None
+    expected_root = (repo_root / "tests" / "test_data" / "6_expected").resolve()
+    if not expected_root.exists():
+        raise FileNotFoundError(f"Expected data root not found: {expected_root}")
 
-    for cmp_name in compounds:
-        cmp_out = (output_dir / cmp_name).resolve()
-        cmp_out.mkdir(parents=True, exist_ok=True)
+    logger.info("First compound=%s; expected_root=%s", first_cmp, expected_root)
+    return cfg, first_cmp, expected_root
 
-        # Build paths for FEPA ensembles
-        path_dict = load_abfe_paths_for_compound(
-            config,
-            cmp=cmp_name,
-            bp_selection_string="name CA and resid " + config["pocket_residues_string"],
-            van_list=van_list,
-            leg_window_list=leg_window_list,
-            apo=False,
+
+@pytest.fixture(scope="function")
+def run_e2e(
+    tmp_path: Path, config_and_first_cmp: Tuple[dict, str, Path]
+) -> Dict[str, Path]:
+    """
+    Execute an end-to-end run using FEPA, writing outputs strictly under tmp_path.
+    Returns output paths and the reference CSV path.
+    """
+    config, first_cmp, expected_root = config_and_first_cmp
+    tmp_out = tmp_path / first_cmp
+    tmp_out.mkdir(parents=True, exist_ok=True)
+
+    # Inputs mirror the script's choices (read-only)
+    van_list = [1]
+    leg_window_list = ["coul.00", "coul.01"]
+
+    # Resolve ABFE/holo paths for this compound (no writes)
+    path_dict = load_abfe_paths_for_compound(
+        config,
+        cmp=first_cmp,
+        bp_selection_string="name CA and resid " + config["pocket_residues_string"],
+        van_list=van_list,
+        leg_window_list=leg_window_list,
+        apo=False,
+    )
+    logger.info("Built path_dict for %s", first_cmp)
+
+    # Build universes
+    eh = EnsembleHandler(path_dict)
+    eh.make_universes()
+    uni_all = eh.get_universe_dict()
+    check_bp_residue_consistency(uni_all)
+
+    # Keep holo-only
+    uni = {k: u for k, u in uni_all.items() if "apo" not in k.lower()}
+    if not uni:
+        raise RuntimeError("No holo universes available after filtering.")
+
+    # Helper: infer ligand resname if config value is missing/wrong.
+    def _infer_ligand_resname(universes: Dict[str, object]) -> str | None:
+        COMMON = {
+            "ALA",
+            "ARG",
+            "ASN",
+            "ASP",
+            "CYS",
+            "GLN",
+            "GLU",
+            "GLY",
+            "HIS",
+            "ILE",
+            "LEU",
+            "LYS",
+            "MET",
+            "PHE",
+            "PRO",
+            "SER",
+            "THR",
+            "TRP",
+            "TYR",
+            "VAL",
+            "SOL",
+            "HOH",
+            "TIP3",
+            "NA",
+            "K",
+            "CL",
+            "CLA",
+            "POT",
+            "MG",
+            "CA",
+            "POPC",
+            "POPE",
+            "POPS",
+            "CHL1",
+            "CHOL",
+            "DOPC",
+            "DPPC",
+        }
+        counts: Dict[str, int] = {}
+        for u in universes.values():
+            for res in u.residues:
+                rn = str(res.resname).upper()
+                if rn in COMMON:
+                    continue
+                ag = res.atoms.select_atoms("not name H*")
+                if ag.n_atoms >= 6:
+                    counts[rn] = counts.get(rn, 0) + 1
+        return max(counts, key=counts.get) if counts else None
+
+    # Prefer config-provided ligand resname; else infer.
+    lig_resname = (config.get("ligand_resname") or "").strip().upper()
+    if not lig_resname:
+        lig_resname = _infer_ligand_resname(uni) or "UNK"
+
+    # Try selection with preferred/inferred name; if absent, attempt inference fallback once.
+    def _filter_universes_by_lig(
+        u_dict: Dict[str, object], resname: str
+    ) -> Tuple[Dict[str, object], str]:
+        sel = f"resname {resname} and not name H*"
+        keep = {k: u for k, u in u_dict.items() if u.select_atoms(sel).n_atoms > 0}
+        return keep, sel
+
+    uni_try, lig_sel = _filter_universes_by_lig(uni, lig_resname)
+    if not uni_try:
+        inferred = _infer_ligand_resname(uni)
+        if inferred and inferred != lig_resname:
+            lig_resname = inferred
+            uni_try, lig_sel = _filter_universes_by_lig(uni, lig_resname)
+
+    if not uni_try:
+        raise RuntimeError(
+            f"No holo universes contain a detectable ligand (tried '{lig_resname}')."
         )
-        logger.info("Built path_dict for %s", cmp_name)
 
-        # Create universes and validate binding-pocket residues
-        eh = EnsembleHandler(path_dict)
-        eh.make_universes()
-        uni_dict_all = eh.get_universe_dict()
-        check_bp_residue_consistency(uni_dict_all)
+    # Deterministic order and global frame mapping
+    keys = list(uni_try.keys())
+    ens = [uni_try[k] for k in keys]
+    lengths = [len(u.trajectory) for u in ens]
+    if any(n == 0 for n in lengths):
+        raise RuntimeError("One or more universes have zero frames.")
+    offsets = np.cumsum([0] + lengths[:-1])
+    total = int(sum(lengths))
+    ensemble_series = [None] * total
+    timestep_series = [None] * total
+    for i, key in enumerate(keys):
+        off = int(offsets[i])
+        for j in range(lengths[i]):
+            ensemble_series[off + j] = key
+            timestep_series[off + j] = j
 
-        # Holo universes only (guard as in original)
-        uni_dict = {k: u for k, u in uni_dict_all.items() if "apo" not in k.lower()}
-        if not uni_dict:
-            raise RuntimeError("No holo universes available. Check test inputs.")
+    # Cluster ligand conformations
+    dbscan = encore.DBSCAN(eps=0.5, min_samples=5, algorithm="auto", leaf_size=30)
+    clusters = encore.cluster(
+        ensembles=ens,
+        select=lig_sel,
+        superimposition_subset="name CA",
+        method=dbscan,
+    )
 
-        # Ligand resname: config override -> heuristic -> "UNK"
-        lig_resname = (config.get("ligand_resname") or "").strip().upper()
-        if not lig_resname:
-            counts = {}
-            for u in uni_dict.values():
-                for res in u.residues:
-                    rn = str(res.resname).upper()
-                    if rn in _COMMON_NON_LIG:
-                        continue
-                    ag = res.atoms.select_atoms("not name H*")
-                    if ag.n_atoms >= 6:
-                        counts[rn] = counts.get(rn, 0) + 1
-            lig_resname = max(counts, key=counts.get) if counts else "UNK"
+    # Assign cluster IDs per frame and dump a centroid to tmp_path
+    cluster_series = [None] * total
+    first_centroid_pdb = None
+    for cl in clusters:
+        cid = int(cl.id)
+        for gi in cl.elements:
+            cluster_series[int(gi)] = cid
 
-        lig_sel = f"resname {lig_resname} and not name H*"
-        # Drop universes lacking the ligand selection
-        drop = [k for k, u in uni_dict.items() if u.select_atoms(lig_sel).n_atoms == 0]
-        for k in drop:
-            uni_dict.pop(k, None)
-        if not uni_dict:
-            raise RuntimeError(f"No holo universes contain ligand '{lig_resname}'.")
-
-        # Stable ordering drives global frame indexing
-        keys_in_order = list(uni_dict.keys())
-        ensembles = [uni_dict[k] for k in keys_in_order]
-
-        # Build global index mapping (concatenated frame indices)
-        traj_lengths = [len(u.trajectory) for u in ensembles]
-        if any(n == 0 for n in traj_lengths):
-            raise RuntimeError("One or more universes have zero frames.")
-        offsets = np.cumsum([0] + traj_lengths[:-1])
-        total_frames = int(sum(traj_lengths))
-        ensemble_series = [None] * total_frames
-        timestep_series = [None] * total_frames
-        for i, key in enumerate(keys_in_order):
-            n = traj_lengths[i]
-            off = int(offsets[i])
-            for j in range(n):
-                ensemble_series[off + j] = key
-                timestep_series[off + j] = j
-
-        # Cluster ligand conformations; dump centroid frames (to tmp_path)
-        dbscan_method = encore.DBSCAN(
-            eps=0.5, min_samples=5, algorithm="auto", leaf_size=30
+        centroid_gid = int(cl.centroid)
+        centroid_ensemble = ensemble_series[centroid_gid]
+        centroid_timestep = int(timestep_series[centroid_gid])
+        out_pdb = (tmp_out / f"{first_cmp}_conformation_cluster_{cid}.pdb").resolve()
+        eh.dump_frames(
+            ensemble=centroid_ensemble,
+            timestep=centroid_timestep,
+            save_path=str(out_pdb),
         )
-        cluster_collection = encore.cluster(
-            ensembles=ensembles,
-            select=lig_sel,
-            superimposition_subset="name CA",
-            method=dbscan_method,
-        )
+        if first_centroid_pdb is None:
+            first_centroid_pdb = out_pdb
 
-        cluster_series = [None] * total_frames
-        first_centroid_pdb_for_cmp: Path | None = None
-        for clus in cluster_collection:
-            cluster_id = int(clus.id)
-            indices = list(clus.elements)  # global indices
-            for idx in indices:
-                cluster_series[idx] = cluster_id
+    # Persist cluster assignment CSV to tmp_path
+    df = pd.DataFrame(
+        {
+            "timestep": timestep_series,
+            "ensemble": ensemble_series,
+            "cluster": cluster_series,
+        }
+    )
+    prod_csv = (tmp_out / f"{first_cmp}_conformation_cluster_df.csv").resolve()
+    df.to_csv(prod_csv, index=False)
+    logger.info("Wrote CSV: %s", prod_csv)
+    if first_centroid_pdb:
+        logger.info("Wrote PDB: %s", first_centroid_pdb)
 
-            centroid_gid = int(clus.centroid)
-            centroid_ensemble = ensemble_series[centroid_gid]
-            centroid_timestep = int(timestep_series[centroid_gid])
-            out_pdb = (
-                cmp_out / f"{cmp_name}_conformation_cluster_{cluster_id}.pdb"
-            ).resolve()
-            eh.dump_frames(
-                ensemble=centroid_ensemble,
-                timestep=centroid_timestep,
-                save_path=str(out_pdb),
-            )
-            if first_centroid_pdb_for_cmp is None:
-                first_centroid_pdb_for_cmp = out_pdb
-
-        # Persist assignments CSV (to tmp_path)
-        cluster_df = pd.DataFrame(
-            {
-                "timestep": timestep_series,
-                "ensemble": ensemble_series,
-                "cluster": cluster_series,
-            }
-        )
-        out_csv = (cmp_out / f"{cmp_name}_conformation_cluster_df.csv").resolve()
-        cluster_df.to_csv(out_csv, index=False)
-        logger.info("Wrote CSV for %s: %s", cmp_name, out_csv)
-        if first_centroid_pdb_for_cmp is not None:
-            logger.info("Wrote PDB for %s: %s", cmp_name, first_centroid_pdb_for_cmp)
-
-        # Capture the first compound's artifacts for return
-        if cmp_name == first_cmp:
-            produced_csv_path = out_csv
-            produced_pdb_path = first_centroid_pdb_for_cmp
-
-    # Reference CSV path for the first compound (as per original script; READ-ONLY)
-    ref_csv_path = (
+    # Reference CSV (repo-relative)
+    ref_csv = (
         expected_root / first_cmp / f"{first_cmp}_conformation_cluster_df.csv"
     ).resolve()
 
-    if produced_csv_path is None or produced_pdb_path is None:
-        raise RuntimeError(
-            "Failed to produce expected artifacts for the first compound."
-        )
-
-    logger.info("Pipeline completed for first compound: %s", first_cmp)
     return {
-        "csv_path": produced_csv_path,
-        "pdb_path": produced_pdb_path,
-        "ref_csv_path": ref_csv_path,
+        "csv_path": prod_csv,
+        "pdb_path": first_centroid_pdb,
+        "ref_csv_path": ref_csv,
         "compound": Path(first_cmp),
     }
 
 
-def test_end_to_end_csv_and_pdb(tmp_path: Path) -> None:
+# ----------------------------------- Test -----------------------------------
+
+
+@pytest.mark.filterwarnings("ignore::Warning")
+def test_e2e_csv_matches_and_pdb_exists(run_e2e: Dict[str, Path]) -> None:
     """
-    Single end-to-end test:
-      - Runs the reproduced pipeline writing to tmp_path.
-      - Compares produced CSV (tmp_path) to reference CSV (repo tests/test_data/6_expected) via assert_frame_equal.
-      - Asserts a PDB centroid file exists under tmp_path.
-      - Logs major steps.
+    Produce temporary CSV & PDB via FEPA and verify:
+      - CSV exactly matches the repository's expected CSV
+      - PDB centroid file exists under tmp_path
     """
-    logger.info("Test start: running FEPA pipeline into %s", tmp_path)
+    prod_csv = run_e2e["csv_path"]
+    ref_csv = run_e2e["ref_csv_path"]
+    pdb_path = run_e2e["pdb_path"]
 
-    # Execute pipeline with outputs confined to tmp_path
-    artifacts = run_pipeline(tmp_path)
+    # Sanity: required files must exist
+    assert prod_csv and prod_csv.exists(), f"Produced CSV not found: {prod_csv}"
+    assert ref_csv and ref_csv.exists(), f"Reference CSV not found: {ref_csv}"
 
-    # Load and compare CSVs exactly (drop only obviously nondeterministic columns if present)
-    prod_csv = artifacts["csv_path"]
-    ref_csv = artifacts["ref_csv_path"]
-    assert prod_csv.exists(), f"Produced CSV not found: {prod_csv}"
-    assert ref_csv.exists(), f"Reference CSV not found: {ref_csv}"
-
+    # Load and compare
     df_prod = pd.read_csv(prod_csv)
     df_ref = pd.read_csv(ref_csv)
 
+    # Drop any volatile columns if present
+    for col in ("timestamp", "datetime", "uuid"):
+        if col in df_prod.columns and col in df_ref.columns:
+            df_prod = df_prod.drop(columns=[col])
+            df_ref = df_ref.drop(columns=[col])
+
     pdt.assert_frame_equal(df_prod, df_ref, check_like=False, check_dtype=False)
-    logger.info("CSV comparison passed for %s", artifacts["compound"])
+    logger.info("CSV comparison passed for %s", run_e2e["compound"])
 
-    # PDB check
-    pdb_path = artifacts["pdb_path"]
+    # PDB existence
     assert pdb_path is not None and pdb_path.exists(), (
-        f"PDB artifact not found under tmp_path: {pdb_path}"
+        f"PDB artifact not found: {pdb_path}"
     )
-
-    logger.info("Test end: FEPA pipeline integration successful.")
+    logger.info("PDB existence check passed for %s", pdb_path)
