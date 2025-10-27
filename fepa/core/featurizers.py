@@ -26,7 +26,9 @@ from fepa.utils.BAT_utils import read_BAT
 from fepa.utils.water_utils import WaterOccupancyAnalysis
 from fepa.core.ensemble_handler import EnsembleHandler
 from MDAnalysis import transformations as trans
-
+from collections import defaultdict
+from typing import Literal
+from scipy.spatial import ConvexHull, Delaunay
 
 class BaseFeaturizer(ABC):
     """Base class for featurizers"""
@@ -479,7 +481,7 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
         self.feature_type = "SideChainTorsions"
         self.feature_df = None
 
-    def featurize(self):
+    def featurize(self, selection: str = "all"):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
@@ -488,9 +490,8 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
             name, data = read_protein_sidechain_torsions(
                 tpr_path,
                 xtc_path,
+                selection=selection,
             )
-            print(name)
-            print(data)
             ensemble_feature_df = pd.DataFrame(data, columns=name)
             ensemble_feature_df["timestep"] = (
                 self.ensemble_handler.get_timestep_from_universe(key=ensemble)
@@ -618,7 +619,7 @@ class BindingPocketVolumeFeaturizer(BaseFeaturizer):
                 keep[i] = True
 
         # boundary faces occur exactly once among kept tets
-        from collections import defaultdict
+
 
         face_count = defaultdict(int)
         face_owner = {}

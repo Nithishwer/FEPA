@@ -20,6 +20,7 @@ venv/
 # FEPA files
 wdir/
 
+
 # Test data generation scripts
 examples/analysis/a6_ligand_conformation_analysis/*test_data.py
 examples/analysis/a3_inter_apo_bp_analysis/*test_data.py
@@ -28,6 +29,6 @@ examples/analysis/a5_sc_torsion_analysis/*test_data.py
 examples/analysis/a1_binding_pocket_analysis/*test_data.py
 examples/analysis/a2_resolvation_analysis/*test_data.py
 
-# test 3
-tests/test_data/3_expected
-tests/a3_test
+# Temporary files 
+.*.lock
+.*.npz
