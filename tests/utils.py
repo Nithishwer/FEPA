@@ -25,6 +25,22 @@ def first_existing(*paths: Path) -> Path:
             return p
     raise FileNotFoundError(f"None of the candidate files exist: {paths!r}")
 
+def align_on_common_keys(
+    left: pd.DataFrame,
+    right: pd.DataFrame,
+    keys=("ensemble", "Time (ps)", "frame"),
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Inner-join alignment on any keys that both frames share; fall back to positional."""
+    keys = [k for k in keys if k in left.columns and k in right.columns]
+    if not keys:
+        n = min(len(left), len(right))
+        return left.iloc[:n].reset_index(drop=True), right.iloc[:n].reset_index(drop=True)
+    merged_keys = right[keys].drop_duplicates()
+    left2 = left.merge(merged_keys, on=keys, how="inner")
+    right2 = right.merge(left2[keys].drop_duplicates(), on=keys, how="inner")
+    left2 = sort_by(left2, keys)
+    right2 = sort_by(right2, keys)
+    return left2.reset_index(drop=True), right2.reset_index(drop=True)
 
 def sort_by(df: pd.DataFrame, keys=("ensemble", "timestep", "frame")) -> pd.DataFrame:
     """Sort a DataFrame by available keys, resetting the index."""
