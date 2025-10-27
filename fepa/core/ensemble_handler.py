@@ -7,8 +7,7 @@ from typing import Dict
 import MDAnalysis as mda
 import MDAnalysis.transformations as trans
 import logging
-from MDAnalysis.analysis.hydrogenbonds.hbond_analysis import (
-  HydrogenBondAnalysis as HBA)
+from MDAnalysis.analysis.hydrogenbonds.hbond_analysis import HydrogenBondAnalysis as HBA
 
 warnings.filterwarnings("ignore")  # Suppress MDAnalysis warnings
 
@@ -36,6 +35,7 @@ class EnsembleHandler:
         Makes and stores MDAnalysis universes from the path dictionary.
         """
         for key in self.path_dict.keys():
+            logging.debug(f"Loading universe for {key} ...")
             tpr_path = self.path_dict[key]["tpr"]
             xtc_path = self.path_dict[key]["xtc"]
             bp_selection_string = self.path_dict[key]["bp_selection_string"]
