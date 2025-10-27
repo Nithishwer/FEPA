@@ -481,7 +481,7 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
         self.feature_type = "SideChainTorsions"
         self.feature_df = None
 
-    def featurize(self):
+    def featurize(self, selection: str = "all"):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
@@ -490,9 +490,8 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
             name, data = read_protein_sidechain_torsions(
                 tpr_path,
                 xtc_path,
+                selection=selection,
             )
-            print(name)
-            print(data)
             ensemble_feature_df = pd.DataFrame(data, columns=name)
             ensemble_feature_df["timestep"] = (
                 self.ensemble_handler.get_timestep_from_universe(key=ensemble)

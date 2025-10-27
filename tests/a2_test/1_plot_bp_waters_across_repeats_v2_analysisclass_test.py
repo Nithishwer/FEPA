@@ -2,7 +2,7 @@
 Test: BP water featurization (minimal slice).
 1) Runs featurization for van=1 and windows ['coul.00', 'coul.01'].
 2) Asserts artifacts exist (CSV).
-3) Compares WaterOccupancy_features.csv to a golden reference.
+3) Compares WaterOccupancy_features.csv to a expected reference.
 """
 
 import warnings
@@ -36,7 +36,7 @@ BP_SELECTION_STRING = (
 
 @pytest.mark.slow
 @pytest.mark.integration
-def test_bp_waters_minimal_against_golden(tmp_path, test_env):
+def test_bp_waters_minimal_against_expected(tmp_path, test_env):
     # --- Setup ---
     config = test_env["config"]
     repo_root = test_env["root"]
@@ -64,9 +64,9 @@ def test_bp_waters_minimal_against_golden(tmp_path, test_env):
     assert act_csv.exists(), f"Expected feature file not found: {act_csv}"
 
     # --- Comparison ---
-    golden_csv = (
+    expected_csv = (
         repo_root / "tests" / "test_data" / "2_expected" / cmp_name / "WaterOccupancy_features.csv"
     )
-    assert golden_csv.exists(), f"Golden CSV not found: {golden_csv}"
+    assert expected_csv.exists(), f"Expected CSV not found: {expected_csv}"
 
-    check_csv_equality(act_csv, golden_csv, label="Water occupancy CSV", rtol=RTOL, atol=ATOL)
+    check_csv_equality(act_csv, expected_csv, label="Water occupancy CSV", rtol=RTOL, atol=ATOL)
