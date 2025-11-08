@@ -43,10 +43,11 @@ class PCADimReducer(BaseDimReducer):
     Class to perform PCA on features
     """
 
-    def __init__(self, feature_df: pd.DataFrame, n_components: int = 8):
+    def __init__(self, feature_df: pd.DataFrame, n_components: int = 8, random_state: int = None):
         self.pca = None
         self.feature_df = feature_df
         self.n_components = n_components
+        self.random_state = random_state
         super().__init__(feature_df, n_components)
         self.pca_projection_df = None
         self.method = "PCA"
@@ -61,6 +62,13 @@ class PCADimReducer(BaseDimReducer):
         )
         # Calculate PCA
         logging.info("Calculating PCA...")
+        # Note: pensa's calculate_pca doesn't currently support random_state parameter
+        # PCA is deterministic for most real data (randomness only affects eigenvector signs when eigenvalues tie)
+        if self.random_state is not None:
+            logging.warning(
+                "random_state parameter is set but pensa's calculate_pca doesn't support it. "
+                "PCA results should still be reproducible for typical data."
+            )
         self.pca = calculate_pca(self.feature_only_df.values, self.n_components)
         self.feature_column_keyword = feature_column_keyword
         return self.pca
