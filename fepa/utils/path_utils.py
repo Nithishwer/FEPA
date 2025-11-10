@@ -130,6 +130,7 @@ def load_abfe_paths_for_compound(
     van_list: list[str],
     leg_window_list: list[str],
     apo=True,
+    apo_list: list[int] = [1, 2, 3],
     vanilla_path_template_old=False,
 ) -> dict:
     """Loads MD trajectory paths for a given compound."""
@@ -224,7 +225,7 @@ def load_abfe_paths_for_compound(
                 "bp_selection_string": bp_selection_string,
             }
     if apo:
-        for apo_rep_no in [1, 2, 3]:
+        for apo_rep_no in apo_list:
             path_dict[f"apo_{apo_rep_no}"] = {
                 "pdb": os.path.join(
                     config["apo_path_template"].format(REP_NO=apo_rep_no), "npt.gro"
