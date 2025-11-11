@@ -45,6 +45,7 @@ NOTE: Need to remove ensemblehandler and just use universe dict
 # Load trajectories
 ensemble_handler = EnsembleHandler(path_dict)
 # Make universes
+ensemble_handler.make_universes()
 logging.info("Making universes for compound %s...", cmp)
 # Check for BP residue consistency across all the trajectories
 logging.info("Checking residue consistency for compound %s...", cmp)
@@ -54,7 +55,7 @@ logging.info("Checking residue consistency for compound %s...", cmp)
 
 We will now be featurizing these trajectories by their pairwise C-alpha distances in the binding pocket using the function `SelfDistanceFeaturizer` from fepa.core.featurizers. `SelfDistanceFeaturizer` computes and stored all possible pairs of distances between the C-alpha atoms of the binding pocket residues. The class also has `save_features` and `load_features` functions that help save the features as a csv file to make sure the time consuming featurization step need not be repeated every run.
 
-```
+```python
 # Make a folder for the analysis output
 cmp_run_dir = f'analysis/{cmp}/'
 if !(os.path.exists(cmp_run_dir)):
@@ -70,7 +71,7 @@ featurizer.save_features(input_dir=cmp_existing_run_dir)
 
 Saving the features in a csv format gives us the flexibility to analyse it as required. For the purpose of this tutorial, we will be looking at how our features capture the difference between the apo, the holo and the abfe ensembles. To do this we reduce the dimensions of the features data using the `PCADimReducer` class from `fepa.core.dim_reducers`. FEPA also supports other dimensionality reduction techniqeus like UMAP and tSNE. In fact UMAP is better able to resolve the differences in binding pocket configurations between different ensembles. We will be doing PCA here as it also doubles up as a nice CV to bias when performing umbrella sampling later.
 
-```
+```python
 # Dimensionality Reduction
 logging.info("Performing dimensionality reduction for compound %s...", cmp)
 dimreducer = PCADimReducer(featurizer.get_feature_df(), n_components=8)
@@ -83,7 +84,7 @@ dimreducer.save_projection_df(
 
 First we plot the eigen values of all the PCs to understand what percentage of variance is captured by the first few PCs:
 
-```
+```python
 logging.info("Plotting PCA eigenvalues for compound %s...", cmp)
 plot_eigenvalues(
     pca_object=dimreducer.get_pca(),
@@ -94,7 +95,7 @@ plot_eigenvalues(
 
 We can then visualize the dimensionality reduced data using the DimRedVisualizer class. This class allows us to visualize all aspects of the data without having to rewrite functions all the time. In the code snippet given below, we plot the first two PCs colored by simulation and time. The class also allows us to send list of data points that must be highlighted.
 
-```
+```python
 # Visualization
 projection_df = dimreducer.get_pca_projection_df()
 # remove rows with ensemble containing nvt

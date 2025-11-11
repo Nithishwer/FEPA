@@ -1,17 +1,22 @@
-# Welcome to MkDocs
+---
+icon: lucide/rocket
+title: Getting Started
+---
 
-For full documentation visit [mkdocs.org](https://www.mkdocs.org).
+# Getting Started with FEPA
 
-## Commands
+**FEPA** (Free Energy Perturbation Analysis) is a Python package for analyzing molecular dynamics (MD) trajectories from FEP simulations, particularly **ABFEs**. FEPA allows you to visualize conformational changes and set up simulations to correct free energy estimates.
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+This guide covers installation, basic usage, and key workflows.
 
-## Project layout
+---
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+## Installation
+
+FEPA is must be installed from GitHub:
+
+```bash
+git clone https://github.com/Nithishwer/FEPA.git
+cd FEPA
+pip install -e .
+```
