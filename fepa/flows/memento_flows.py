@@ -70,9 +70,7 @@ class memento_workflow:
             run_name=self.run_name,
         )
 
-    def run_memento(
-        self, template_path, last_run, cyx_residue_indices, protonation_states=None
-    ):
+    def run_memento(self, last_run, cyx_residue_indices, protonation_states=None):
         if not os.path.exists(os.path.join(self.folder_path, self.run_name)):
             print(
                 f"Folder '{os.path.join(self.folder_path, self.run_name)}' does not exist."
@@ -84,7 +82,7 @@ class memento_workflow:
             os.chdir(os.path.join(self.folder_path, self.run_name))
 
         run_pymemento(
-            template_path=template_path,
+            template_path=self.template_path,
             last_run=last_run,
             protonation_states=protonation_states,
             n_residues=self.n_residues,
