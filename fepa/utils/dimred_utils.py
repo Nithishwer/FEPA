@@ -1,7 +1,7 @@
 """
 This module contains functions that help with dimensionality reduction and clustering.
 """
-
+from sklearn.decomposition import PCA
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -36,6 +36,27 @@ def elbow_plot_pca(pca_projection_df, n_components=None, save_path=None):
         plt.savefig(save_path, bbox_inches="tight")
     plt.close()
 
+def calculate_pca(data, dim=None, random_state=42):
+    """
+    Performs a scikit-learn PCA on the provided data.
+
+    Parameters
+    ----------
+        data : float array
+            Trajectory data [frames, frame_data].
+        dim : int, optional, default = -1
+            The number of dimensions (principal components) to project onto.
+            -1 means all numerically available dimensions will be used.
+
+    Returns
+    -------
+        pca : PCA obj
+            Principal components information.
+
+    """
+    pca = PCA(n_components=dim, random_state=random_state)
+    pca.fit(data)
+    return pca
 
 def cluster_pca(pca_projection_df, n_clusters, n_components=None):
     """

@@ -159,7 +159,13 @@ class DimRedVisualizer:
         title = f"2 Component {self.data_name}"
 
         if targets is None:
-            # Get unique targets if none are specified
+            # If na in df[column], raise warning and drop na
+            if df[column].isna().any():
+                logging.warning(
+                    "NaN values found in column %s. These will be dropped for plotting.",
+                    column,
+                )
+                df = df.dropna(subset=[column])
             targets = np.unique(df[column])
             logging.info(
                 "No targets specified, plotting all unique targets: %s", targets

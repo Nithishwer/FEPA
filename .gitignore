@@ -19,3 +19,7 @@ venv/
 
 # FEPA files
 wdir/
+
+# Temporary files 
+.*.lock
+.*.npz
