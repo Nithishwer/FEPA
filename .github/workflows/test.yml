@@ -14,26 +14,25 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v2
-        with:
-          python-version: 3.10
-          activate-environment: fepa_env
-          environment-file: requirements.yml
-          auto-update-conda: true
-
       - name: Configure Conda channels
         run: |
           conda config --add channels salilab
           conda config --add channels conda-forge
           conda config --add channels defaults
 
-      - name: Install editable package
+      - name: Set up Conda environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          python-version: 3.10
+          environment-file: requirements.yml
+          activate-environment: fepa_env
+          auto-update-conda: true
+          use-mamba: true
+
+      - name: Install package in editable mode
         run: |
           pip install --no-cache-dir -e .
 
       - name: Run tests
         run: |
           pytest -v --maxfail=1 --disable-warnings
-
-
