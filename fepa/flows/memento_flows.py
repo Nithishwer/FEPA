@@ -8,13 +8,21 @@ from fepa.utils.memento_utils import (
     run_pymemento,
 )
 
+
 def _run_gmx(args, cwd=None, input_str=None, timeout=900):
     env = os.environ.copy()
     env.setdefault("GMX_DISABLE_PAGER", "1")
-    cp = subprocess.run(["gmx"] + list(args),
-                        cwd=cwd, input=input_str, text=True,
-                        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                        check=True, timeout=timeout, env=env)
+    cp = subprocess.run(
+        ["gmx"] + list(args),
+        cwd=cwd,
+        input=input_str,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=True,
+        timeout=timeout,
+        env=env,
+    )
     return cp.stdout
 
 
@@ -30,12 +38,14 @@ class memento_workflow:
         n_residues,
         run_name="memento_run_v1",
     ):
-        self.memento_dir = memento_dir
-        self.initial_gro = initial_gro
-        self.target_gro = target_gro
+        self.memento_dir = os.path.abspath(os.path.expanduser(memento_dir))
+        self.initial_gro = os.path.abspath(os.path.expanduser(initial_gro))
+        self.target_gro = os.path.abspath(os.path.expanduser(target_gro))
         self.initial_name = initial_name
         self.target_name = target_name
-        self.template_path = template_path  # Should have topology with protein and popc
+        self.template_path = os.path.abspath(
+            os.path.expanduser(template_path)
+        )  # Should have topology with protein and popc
         # Template path topol.top must have include statements for c alpha posres in topology and DCAPOSRES in prod.mdp
         self.run_name = run_name
         self.folder_name = f"{self.initial_name}_{self.target_name}"
@@ -60,7 +70,7 @@ class memento_workflow:
             run_name=self.run_name,
         )
 
-    def run_memento(self, template_path, last_run, cyx_residue_indices, protonation_states=None):
+    def run_memento(self, last_run, cyx_residue_indices, protonation_states=None):
         if not os.path.exists(os.path.join(self.folder_path, self.run_name)):
             print(
                 f"Folder '{os.path.join(self.folder_path, self.run_name)}' does not exist."
@@ -72,11 +82,11 @@ class memento_workflow:
             os.chdir(os.path.join(self.folder_path, self.run_name))
 
         run_pymemento(
-            template_path=template_path,
+            template_path=self.template_path,
             last_run=last_run,
             protonation_states=protonation_states,
             n_residues=self.n_residues,
-            cyx_indices=cyx_residue_indices, 
+            cyx_indices=cyx_residue_indices,
         )
         os.chdir("../..")
 
@@ -93,8 +103,11 @@ class memento_workflow:
                 folder_path = os.path.join(boxes_dir, folder_name)
                 current_dir = os.getcwd()
                 os.chdir(folder_path)
-                _run_gmx(["make_ndx", "-f", "em.gro", "-o", "index.ndx"],
-                cwd=folder_path, input_str=f"{index_selection}\nq\n")
+                _run_gmx(
+                    ["make_ndx", "-f", "em.gro", "-o", "index.ndx"],
+                    cwd=folder_path,
+                    input_str=f"{index_selection}\nq\n",
+                )
                 os.chdir(current_dir)
 
         # Copy the job script template

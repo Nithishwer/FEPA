@@ -22,16 +22,15 @@ venv/
 # FEPA files
 wdir/
 
+
 # Test data generation scripts
 examples/analysis/a6_ligand_conformation_analysis/*test_data.py
 examples/analysis/a3_inter_apo_bp_analysis/*test_data.py
-examples/analysis/a4_apo_holo_bp_analysis/*test_data.py
+examples/analysis/a4_apo_holo_bp_analysis/*test_data.a1_binding_pocket_analysis.py
+examples/analysis/a5_sc_torsion_analysis/*test_data.py
+examples/analysis/a1_binding_pocket_analysis/*test_data.py
+examples/analysis/a2_resolvation_analysis/*test_data.py
 
-# Old tests
-tests/a6_test/*
-
-# Test data generation scripts 
-/biggin/b230/magd5710/Documents/FEPA/examples/analysis/a3_inter_apo_bp_analysis/*test_data.py
-
-# Pycache
-/biggin/b230/magd5710/Documents/FEPA/tests/a3_test/__pycache__/*
+# Temporary files 
+.*.lock
+.*.npz

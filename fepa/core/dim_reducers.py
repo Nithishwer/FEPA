@@ -6,7 +6,8 @@ import logging
 from abc import ABC, abstractmethod
 import umap
 import pandas as pd
-from pensa.dimensionality import calculate_pca, project_on_eigenvector_pca
+from pensa.dimensionality import project_on_eigenvector_pca
+from fepa.utils.dimred_utils import calculate_pca
 import pickle
 
 

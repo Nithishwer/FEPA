@@ -26,6 +26,9 @@ from fepa.utils.BAT_utils import read_BAT
 from fepa.utils.water_utils import WaterOccupancyAnalysis
 from fepa.core.ensemble_handler import EnsembleHandler
 from MDAnalysis import transformations as trans
+from collections import defaultdict
+from typing import Literal
+from scipy.spatial import ConvexHull, Delaunay
 
 
 class BaseFeaturizer(ABC):
@@ -181,7 +184,7 @@ class BPWaterFeaturizer(BaseFeaturizer):
         super().__init__(ensemble_handler)
         self.feature_type = "WaterOccupancy"
 
-    def featurize(self, radius, resname='SOL', n_jobs=20, pbc_corrections=False):
+    def featurize(self, radius, resname="SOL", n_jobs=20, pbc_corrections=False):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
@@ -208,7 +211,7 @@ class BPWaterFeaturizer(BaseFeaturizer):
                 ],
                 radius=radius,
                 verbose=True,
-                resname=resname
+                resname=resname,
             ).run()
             # Add to the df list
             ensemble_feature_df = results.df
@@ -430,7 +433,7 @@ class HbondFeaturizer(BaseFeaturizer):
             logging.info(f"Names: {names[:5]}")
             logging.info(f"Data (first 5 rows): {data[:5]}")
 
-            # Convert the output dictionary to a DataFrame        
+            # Convert the output dictionary to a DataFrame
             ensemble_feature_df = pd.DataFrame(data=data.T, columns=names)
             ensemble_feature_df["timestep"] = (
                 self.ensemble_handler.get_timestep_from_universe(key=ensemble)
@@ -479,7 +482,7 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
         self.feature_type = "SideChainTorsions"
         self.feature_df = None
 
-    def featurize(self):
+    def featurize(self, selection: str = "all"):
         feature_dfs = []
         for ensemble in self.ensemble_handler.path_dict.keys():
             logging.info("Featurizing %s...", ensemble)
@@ -488,9 +491,8 @@ class SideChainTorsionsFeaturizer(BaseFeaturizer):
             name, data = read_protein_sidechain_torsions(
                 tpr_path,
                 xtc_path,
+                selection=selection,
             )
-            print(name)
-            print(data)
             ensemble_feature_df = pd.DataFrame(data, columns=name)
             ensemble_feature_df["timestep"] = (
                 self.ensemble_handler.get_timestep_from_universe(key=ensemble)
@@ -618,7 +620,6 @@ class BindingPocketVolumeFeaturizer(BaseFeaturizer):
                 keep[i] = True
 
         # boundary faces occur exactly once among kept tets
-        from collections import defaultdict
 
         face_count = defaultdict(int)
         face_owner = {}
