@@ -243,13 +243,12 @@ dependencies:
   - pygments=2.19.1=pyhd8ed1ab_0
   - pysocks=1.7.1=pyha55dd90_7
   - pytables=3.10.1=py310h1affd9f_4
-  - python=3.10.0=h543edf9_3_cpython
+  - python=3.10
   - python-constraint=1.4.0=pyhff2d567_1
   - python-dateutil=2.9.0.post0=pyhff2d567_1
   - python-fastjsonschema=2.21.1=pyhd8ed1ab_0
   - python-json-logger=2.0.7=pyhd8ed1ab_0
   - python-tzdata=2025.2=pyhd8ed1ab_0
-  - python_abi=3.10=7_cp310
   - pytng=0.3.3=py310he95d665_1
   - pyyaml=6.0.2=py310h89163eb_2
   - pyzmq=26.4.0=py310h71f11fc_0
