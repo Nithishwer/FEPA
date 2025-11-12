@@ -1,3 +1,7 @@
+---
+icon: lucide/rocket
+title: Getting Started
+---
 
 # Getting Started with FEPA
 
@@ -16,5 +20,3 @@ git clone https://github.com/Nithishwer/FEPA.git
 cd FEPA
 pip install -e .
 ```
-
-Documentation can be found [here](nithishwer.github.io/FEPA)
