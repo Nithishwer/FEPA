@@ -17,4 +17,4 @@ cd FEPA
 pip install -e .
 ```
 
-Documentation can be found on nithishwer.github.io/FEPA
+Documentation can be found [here](nithishwer.github.io/FEPA)
