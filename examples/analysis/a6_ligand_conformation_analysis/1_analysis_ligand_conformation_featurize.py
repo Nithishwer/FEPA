@@ -117,7 +117,7 @@ def main():
             centroid_id = cluster.centroid
             centroid_ensemble = ensemble_series[centroid_id]
             centroid_timestep = timstep_series[centroid_id]
-            ensemble_handler.dump_frame(
+            ensemble_handler.dump_frames(
                 ensemble=centroid_ensemble,
                 timestep=centroid_timestep,
                 save_path=os.path.join(
