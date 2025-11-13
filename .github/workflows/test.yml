@@ -31,13 +31,7 @@ jobs:
           use-mamba: true
 
       - name: Install package in editable mode
-        shell: bash -l {0}
-        run: |
-          conda activate fepa_env
-          pip install --no-cache-dir -e .
+        run: conda run -n fepa_env pip install --no-cache-dir -e .
 
       - name: Run tests
-        shell: bash -l {0}
-        run: |
-          conda activate fepa_env
-          pytest -v --maxfail=1 --disable-warnings
+        run: conda run -n fepa_env pytest -v --maxfail=1 --disable-warnings
