@@ -24,15 +24,10 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, module="MDAnalysi
 warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*importlib.*")
 
 import os
-from pathlib import Path
 import builtins
 from typing import Literal
 
 import pytest
-import shutil
-import numpy as np
-import pandas as pd
-import pandas.testing as pdt
 
 # Default numeric tolerances for floating-point comparisons
 DECIMALS = 6
@@ -43,20 +38,14 @@ ATOL = 1e-8
 builtins.Literal = Literal
 
 # --- FEPA imports ---
-from fepa.utils.file_utils import load_config
 from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.flows import binding_pocket_analysis_workflow
 
 # --- Test utilities and fixtures ---
-from fepa.tests.utils import (
-    round_numeric,
-    sort_by,
-    align_pc_signs,
-    first_existing,
+from tests.utils import (
     check_csv_equality,
 )
-from fepa.tests.conftest import test_env as test_env_fixture
 
 
 @pytest.mark.integration

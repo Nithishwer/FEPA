@@ -8,6 +8,7 @@ Test: Side-chain torsions featurization (minimal slice).
 import warnings
 from Bio import BiopythonDeprecationWarning
 import sys
+
 print("Python executable:", sys.executable)
 print("Python version:", sys.version.splitlines()[0])
 print("sys.path:")
@@ -18,26 +19,19 @@ warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="MDAnalysis.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*importlib.*")
 
-from pathlib import Path
 import pytest
 import shutil
-import pandas as pd
-import pandas.testing as pdt
 
-from fepa.utils.file_utils import load_config
 from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.core.featurizers import SideChainTorsionsFeaturizer
-from fepa.tests.utils import check_csv_equality
-from fepa.tests.conftest import test_env
+from tests.utils import check_csv_equality
 import sys
 
 RTOL = 1e-6
 ATOL = 1e-8
 
-BP_SELECTION_STRING = (
-    "name CA and resid 54 55 56 57" 
-) # Doesnt matter what residues we pick here, as sidechain torsions dont use this selection
+BP_SELECTION_STRING = "name CA and resid 54 55 56 57"  # Doesnt matter what residues we pick here, as sidechain torsions dont use this selection
 
 
 @pytest.mark.slow
@@ -70,12 +64,19 @@ def test_sidechain_torsions_minimal_against_est(tmp_path, test_env):
     assert act_csv.exists(), f"Expected feature file not found: {act_csv}"
 
     # Copy actual CSV to a known location for easier debugging if needed
-    shutil.copy(act_csv, repo_root / "tests" / "test_data" )
+    shutil.copy(act_csv, repo_root / "tests" / "test_data")
 
     # --- Comparison ---
     expected_csv = (
-        repo_root / "tests" / "test_data" / "5_expected" / cmp_name / "SideChainTorsions_features.csv"
+        repo_root
+        / "tests"
+        / "test_data"
+        / "5_expected"
+        / cmp_name
+        / "SideChainTorsions_features.csv"
     )
     assert expected_csv.exists(), f"Golden CSV not found: {expected_csv}"
 
-    check_csv_equality(act_csv, expected_csv, label="Side-chain torsions CSV", rtol=RTOL, atol=ATOL)
+    check_csv_equality(
+        act_csv, expected_csv, label="Side-chain torsions CSV", rtol=RTOL, atol=ATOL
+    )

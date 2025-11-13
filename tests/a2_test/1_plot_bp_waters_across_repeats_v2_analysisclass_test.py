@@ -12,17 +12,12 @@ warnings.filterwarnings("ignore", category=BiopythonDeprecationWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning, module="MDAnalysis.*")
 warnings.filterwarnings("ignore", category=DeprecationWarning, module=".*importlib.*")
 
-from pathlib import Path
-import pandas as pd
-import pandas.testing as pdt
 import pytest
 
-from fepa.utils.file_utils import load_config
 from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.core.featurizers import BPWaterFeaturizer
-from fepa.tests.utils import round_numeric, align_on_common_keys, check_csv_equality
-from fepa.tests.conftest import test_env
+from tests.utils import check_csv_equality
 
 DECIMALS = 6
 RTOL = 1e-6
@@ -33,6 +28,7 @@ BP_SELECTION_STRING = (
     "54 55 56 57 58 59 60 61 62 64 65 68 83 84 85 87 88 91 92 "
     "173 176 177 180 217 218 221 225 235 238 239 240 241 242 243 244 245 246 247"
 )
+
 
 @pytest.mark.slow
 @pytest.mark.integration
@@ -65,8 +61,15 @@ def test_bp_waters_minimal_against_expected(tmp_path, test_env):
 
     # --- Comparison ---
     expected_csv = (
-        repo_root / "tests" / "test_data" / "2_expected" / cmp_name / "WaterOccupancy_features.csv"
+        repo_root
+        / "tests"
+        / "test_data"
+        / "2_expected"
+        / cmp_name
+        / "WaterOccupancy_features.csv"
     )
     assert expected_csv.exists(), f"Expected CSV not found: {expected_csv}"
 
-    check_csv_equality(act_csv, expected_csv, label="Water occupancy CSV", rtol=RTOL, atol=ATOL)
+    check_csv_equality(
+        act_csv, expected_csv, label="Water occupancy CSV", rtol=RTOL, atol=ATOL
+    )
