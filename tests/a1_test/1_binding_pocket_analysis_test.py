@@ -43,7 +43,7 @@ from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.flows import binding_pocket_analysis_workflow
 
 # --- Test utilities and fixtures ---
-from ..tests.utils import (
+from tests.utils import (
     check_csv_equality,
 )
 
