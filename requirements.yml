@@ -15,4 +15,5 @@ dependencies:
   - openmmforcefields
   - numba
   - pytest
+  - umap-learn
   
