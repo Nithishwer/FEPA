@@ -14,11 +14,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure Conda channels
-        run: |
-          conda config --add channels salilab
-          conda config --add channels conda-forge
-          conda config --add channels defaults
+      - name: Cache Conda packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.conda/pkgs
+          key: conda-${{ runner.os }}-${{ hashFiles('requirements.yml') }}
+          restore-keys: |
+            conda-${{ runner.os }}-
 
       - name: Set up Conda environment
         uses: conda-incubator/setup-miniconda@v3
@@ -29,9 +31,13 @@ jobs:
           use-mamba: true
 
       - name: Install package in editable mode
+        shell: bash -l {0}
         run: |
+          conda activate fepa_env
           pip install --no-cache-dir -e .
 
       - name: Run tests
+        shell: bash -l {0}
         run: |
+          conda activate fepa_env
           pytest -v --maxfail=1 --disable-warnings
