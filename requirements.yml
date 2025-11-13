@@ -16,4 +16,5 @@ dependencies:
   - numba
   - pytest
   - umap-learn
-  
+  - pip:
+    - PyMEMENTO
