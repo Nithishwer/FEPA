@@ -3,11 +3,6 @@ icon: lucide/compass
 title: Binding Pocket Resolvation Analysis
 ---
 
----
-icon: lucide/compass
-title: Binding Pocket Resolvation Analysis
----
-
 Visualizing binding pocket resolvation across ABFE simulations is straightforward with FEPA. We follow a workflow similar to Tutorial 1, but instead of `SelfDistanceFeaturizer`, we use `BPWaterFeaturizer` to quantify water occupancy.
 
 ### Load Config and Prepare Paths

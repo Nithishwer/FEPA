@@ -23,7 +23,6 @@ jobs:
       - name: Set up Conda environment
         uses: conda-incubator/setup-miniconda@v3
         with:
-          python-version: 3.10
           environment-file: requirements.yml
           activate-environment: fepa_env
           auto-update-conda: true
