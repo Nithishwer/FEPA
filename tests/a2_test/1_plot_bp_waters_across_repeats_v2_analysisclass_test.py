@@ -17,7 +17,7 @@ import pytest
 from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.core.featurizers import BPWaterFeaturizer
-from ..tests.utils import check_csv_equality
+from tests.utils import check_csv_equality
 
 DECIMALS = 6
 RTOL = 1e-6
