@@ -4,6 +4,7 @@ channels:
   - conda-forge
   - omnia
 dependencies:
+  - python=3.10
   - plumed
   - modeller
   - mdaencore
