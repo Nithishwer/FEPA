@@ -34,4 +34,7 @@ jobs:
         run: conda run -n fepa_env pip install --no-cache-dir -e .
 
       - name: Run tests
-        run: conda run -n fepa_env pytest -v --maxfail=1 --disable-warnings
+        run: |
+          export PYTHONPATH=$(pwd)
+          conda run -n fepa_env pytest -v --maxfail=1 --disable-warnings
+
