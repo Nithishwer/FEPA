@@ -13,4 +13,3 @@ dependencies:
   - openmm
   - openmmforcefields
   - numba
-prefix: /biggin/b211/reub0138/miniforge3/envs/fepa
