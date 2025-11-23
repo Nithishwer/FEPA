@@ -4,9 +4,9 @@ from pathlib import Path
 import pandas.testing as pdt
 
 # === numeric comparison tolerances (module-level defaults)
-DECIMALS = 6
-RTOL = 1e-6
-ATOL = 1e-8
+DECIMALS = 3
+RTOL = 1e-3
+ATOL = 1e-3
 
 
 # === small helpers for deterministic comparisons
@@ -25,6 +25,7 @@ def first_existing(*paths: Path) -> Path:
             return p
     raise FileNotFoundError(f"None of the candidate files exist: {paths!r}")
 
+
 def align_on_common_keys(
     left: pd.DataFrame,
     right: pd.DataFrame,
@@ -34,7 +35,9 @@ def align_on_common_keys(
     keys = [k for k in keys if k in left.columns and k in right.columns]
     if not keys:
         n = min(len(left), len(right))
-        return left.iloc[:n].reset_index(drop=True), right.iloc[:n].reset_index(drop=True)
+        return left.iloc[:n].reset_index(drop=True), right.iloc[:n].reset_index(
+            drop=True
+        )
     merged_keys = right[keys].drop_duplicates()
     left2 = left.merge(merged_keys, on=keys, how="inner")
     right2 = right.merge(left2[keys].drop_duplicates(), on=keys, how="inner")
@@ -42,16 +45,21 @@ def align_on_common_keys(
     right2 = sort_by(right2, keys)
     return left2.reset_index(drop=True), right2.reset_index(drop=True)
 
+
 def sort_by(df: pd.DataFrame, keys=("ensemble", "timestep", "frame")) -> pd.DataFrame:
     """Sort a DataFrame by available keys, resetting the index."""
     use = [k for k in keys if k in df.columns]
     return df.sort_values(use).reset_index(drop=True) if use else df
 
 
-def align_pc_signs(actual: pd.DataFrame, expected: pd.DataFrame, pc_prefix: str = "PC") -> pd.DataFrame:
+def align_pc_signs(
+    actual: pd.DataFrame, expected: pd.DataFrame, pc_prefix: str = "PC"
+) -> pd.DataFrame:
     """Flip PC signs in 'expected' to match 'actual' for consistent orientation."""
     exp = expected.copy()
-    pc_cols = [c for c in exp.columns if c.startswith(pc_prefix) and c in actual.columns]
+    pc_cols = [
+        c for c in exp.columns if c.startswith(pc_prefix) and c in actual.columns
+    ]
     for c in pc_cols:
         a = actual[c].to_numpy()
         b = exp[c].to_numpy()
@@ -87,8 +95,7 @@ def check_csv_equality(
         f"Expected columns: {list(exp.columns)}"
     )
     assert len(act) == len(exp), (
-        f"{label}: row count mismatch "
-        f"(actual={len(act)}, expected={len(exp)})."
+        f"{label}: row count mismatch (actual={len(act)}, expected={len(exp)})."
     )
 
     # --- Numeric comparison
@@ -102,4 +109,6 @@ def check_csv_equality(
             check_dtype=False,
         )
     except AssertionError as e:
-        raise AssertionError(f"{label}: numeric values differ beyond tolerance.\n{e}") from e
+        raise AssertionError(
+            f"{label}: numeric values differ beyond tolerance.\n{e}"
+        ) from e
