@@ -1,0 +1,9 @@
+{
+  "abfe_window_path_template": "tests/test_data/{CMP_NAME}/{LEG_WINDOW}/prod",
+  "vanilla_path_template":      "tests/test_data/{CMP_NAME}/vanilla_rep_{REP_NO}",
+  "vanilla_path_template_old":  "tests/test_data/{CMP_NAME}/vanilla_rep_{REP_NO}",
+  "apo_path_template":          "tests/test_data/1/apo_{REP_NO}",
+  "compounds": ["1"],
+  "pocket_residues_string": "54 55 56 57 58 59 60 61 62 64 65 68 83 84 85 87 88 91 92 173 176 177 180 217 218 221 225 235 238 239 240 241 242 243 244 245 246 247"
+}
+

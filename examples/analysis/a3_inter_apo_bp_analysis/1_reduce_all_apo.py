@@ -74,7 +74,7 @@ def main():
         cmp="apo",  # Abusing function should make it more general
         entropy_metric="jsd",
         columns_to_consider=["PC1", "PC2"],
-        ensemble_handler=ensemble_handler,
+        #ensemble_handler=ensemble_handler,   ## raises error for unrecognized argument
         projection_df=projection_df,
         output_dir=analysis_output_dir,
     )

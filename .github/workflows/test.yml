@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  push:
+    branches: [ main, develop, feat/documentation ]
+  pull_request:
+    branches: [ main, develop, feat/documentation ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Cache Conda packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.conda/pkgs
+          key: conda-${{ runner.os }}-${{ hashFiles('requirements.yml') }}
+          restore-keys: |
+            conda-${{ runner.os }}-
+
+      - name: Set up Conda environment
+        uses: conda-incubator/setup-miniconda@v3
+        with:
+          environment-file: requirements.yml
+          activate-environment: fepa_env
+          auto-update-conda: true
+          use-mamba: true
+
+      - name: Install package in editable mode
+        run: conda run -n fepa_env pip install --no-cache-dir -e .
+
+      - name: Run tests
+        run: |
+          export PYTHONPATH=$(pwd)
+          conda run -n fepa_env pytest -v --maxfail=1 --disable-warnings
+

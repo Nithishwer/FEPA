@@ -295,7 +295,7 @@ def main():
         )
 
 
-# PErform PCA of those top features and see if you casn differentiate ensemles with the PCA
+# Perform PCA of those top features and see if you can differentiate ensembles with the PCA
 
 # Write the PCA components as projection vector and define the feature vector with top features in plumed data file
 
