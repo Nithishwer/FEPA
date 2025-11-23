@@ -72,34 +72,6 @@ def main():
         # Plot apo abfe pca
         workflow.plot_apo_abfe_pca(cmp_output_dir)
 
-        # In the next script, we will do the following:
-
-        # Get top n features
-
-        # reduce top n features
-
-        # Cluster PCA of top n features
-
-        # Plot top n cluster PCA
-
-        # Get centroid of the abfe windows
-
-        # Get centroid of the run
-
-        # Dump both centroid gro files
-
-        #
-
-        # # Plot PCA
-        # workflow.plot_pca(
-        #     cmp_output_dir,
-        #     plot_type="scatter"
-
-        # # Get ensemble center
-        # # dump gro
-        # # make memento for gro
-        # # make equil
-
 
 if __name__ == "__main__":
     main()
