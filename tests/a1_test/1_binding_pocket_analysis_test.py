@@ -29,11 +29,6 @@ from typing import Literal
 
 import pytest
 
-# Default numeric tolerances for floating-point comparisons
-DECIMALS = 6
-RTOL = 1e-6
-ATOL = 1e-8
-
 # Ensure Literal works under older Python versions
 builtins.Literal = Literal
 
