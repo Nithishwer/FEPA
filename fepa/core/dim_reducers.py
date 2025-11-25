@@ -44,7 +44,9 @@ class PCADimReducer(BaseDimReducer):
     Class to perform PCA on features
     """
 
-    def __init__(self, feature_df: pd.DataFrame, n_components: int = 8, random_state: int = None):
+    def __init__(
+        self, feature_df: pd.DataFrame, n_components: int = 8, random_state: int = None
+    ):
         self.pca = None
         self.feature_df = feature_df
         self.n_components = n_components

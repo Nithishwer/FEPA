@@ -2,39 +2,18 @@ import logging
 import os
 import pandas as pd
 from fepa.utils.file_utils import load_config
+from fepa.utils.plot_utils import (
+    plot_sidechain_distribution,
+)
 from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.utils.path_utils import (
-    load_paths_for_compound,
     load_abfe_paths_for_compound,
-    load_paths_for_apo,
-)
-from fepa.core.featurizers import SideChainTorsionsFeaturizer
-from fepa.utils.dimred_utils import cluster_pca
-from fepa.core.dim_reducers import PCADimReducer
-from fepa.core.visualizers import (
-    DimRedVisualizer,
-    plot_eigenvalues,
-    plot_pca_components,
-    plot_entropy_heatmaps,
-)
-from scipy.spatial.distance import jensenshannon
-from fepa.utils.dimred_utils import (
-    cluster_pca,
-    get_ensemble_center,
-    make_ensemble_center_df,
 )
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 import re
-import math
-import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
-import numpy as np
-
-
 
 
 def main():
@@ -45,7 +24,7 @@ def main():
     config = load_config(config_path)
     analysis_output_dir = os.path.join("wdir")
 
-    for cmp in config["compounds"][:1]:
+    for cmp in config["compounds"]:
         # Log
         logging.info("Analyzing compound %s ...", cmp)
 
@@ -60,8 +39,8 @@ def main():
             cmp,
             van_list=[1, 2, 3],
             leg_window_list=[f"vdw.{i:02d}" for i in range(20, 21)]
-             + [f"coul.{i:02d}" for i in range(0, 11)]
-             + [f"rest.{i:02d}" for i in range(0, 12)],
+            + [f"coul.{i:02d}" for i in range(0, 11)]
+            + [f"rest.{i:02d}" for i in range(0, 12)],
             bp_selection_string="name CA and resid " + config["pocket_residues_string"],
             apo=True,
         )
@@ -73,7 +52,7 @@ def main():
 
         ## Featurize
         features_df = pd.read_csv(
-            os.path.join(cmp_output_dir, f"SideChainTorsions_features.csv")
+            os.path.join(cmp_output_dir, "SideChainTorsions_features.csv")
         )
 
         print(features_df.head())
@@ -122,7 +101,7 @@ def main():
             if "coul" in ensemble or "vdw" in ensemble or "rest" in ensemble:
                 match = re.search(r"van_(\d+)", ensemble)
                 if match:
-                    return f"abfe"
+                    return "abfe"
                 else:
                     raise ValueError(f"van not found in ensemble: {ensemble}")
             else:
@@ -175,49 +154,6 @@ def main():
                 cmp_output_dir, f"{cmp}_sidechain_histograms_vdw20.png"
             ),
             ncols=4,
-        )
-
-        # Plot the time evolution of CHI-related variables
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                "apo_1",
-                "apo_2",
-                "apo_3",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_apo.png"
-            ),
-        )
-
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                f"{cmp}_van_1_vdw.20",
-                f"{cmp}_van_2_vdw.20",
-                f"{cmp}_van_3_vdw.20",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_vdw20.png"
-            ),
-        )
-
-        plot_sidechain_evolution(
-            df=filtered_features_df,
-            ensemble_list=[
-                f"{cmp}_van_1",
-                f"{cmp}_van_2",
-                f"{cmp}_van_3",
-            ],
-            figsize=(20, 15),
-            max_cols=4,
-            save_path=os.path.join(
-                cmp_output_dir, f"{cmp}_sidechain_evolution_vanilla.png"
-            ),
         )
 
         # Annotate sim_type for features_df

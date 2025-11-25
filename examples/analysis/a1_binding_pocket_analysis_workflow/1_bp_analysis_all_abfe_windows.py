@@ -2,9 +2,8 @@ import logging
 import os
 from fepa.utils.file_utils import load_config
 from fepa.core.ensemble_handler import EnsembleHandler
-from fepa.utils.path_utils import load_paths_for_compound, load_abfe_paths_for_compound
+from fepa.utils.path_utils import load_abfe_paths_for_compound
 from fepa.flows import binding_pocket_analysis_workflow
-from fepa.utils.dimred_utils import cluster_pca
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -70,6 +69,7 @@ def main():
 
         # Plot apo abfe pca
         workflow.plot_apo_abfe_pca(cmp_output_dir)
+
 
 if __name__ == "__main__":
     main()

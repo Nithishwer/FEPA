@@ -2,11 +2,9 @@ import os
 import math
 from scipy.spatial.distance import jensenshannon
 import seaborn as sns
-import pandas as pd
 import numpy as np
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
-from fepa.utils.stat_utils import calculate_metrics
 
 
 def plot_exp_v_predicted(
@@ -143,6 +141,7 @@ def plot_exp_v_predicted(
     )  # Save the figure as a PNG file with high resolution
     plt.close()
 
+
 def plot_sidechain_distribution(
     df, ensembles, output_file="ensemble_histograms.png", ncols=4, colorby="ensemble"
 ):
@@ -236,13 +235,9 @@ def plot_sidechain_distribution(
     plt.savefig(output_file, dpi=300)
     plt.close()
 
-#!/usr/bin/env python3
-import os
-import logging
-import pandas as pd
-import numpy as np
 
-import matplotlib.pyplot as plt
+#!/usr/bin/env python3
+
 from matplotlib.cm import get_cmap
 
 
