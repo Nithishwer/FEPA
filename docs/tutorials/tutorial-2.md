@@ -182,6 +182,8 @@ umbrella_sampler.setup_simulations(exist_ok=True)
 
 Once your REUS system is set up, you can analyze the results using the workflow:
 
+
+
 ```python
 umbrella_sampler.prepare_wham()
 umbrella_sampler.run_wham()
@@ -194,6 +196,11 @@ umbrella_sampler.plot_free_energies(
 
 This prepares and runs WHAM on the histograms and generates the free energy curves.
 
+
 ![Free Energy curves](image-4.png)
 
 *Figure 1: Free energy curves from the tutorial simulations. The CV values of apo and holo structures are marked with gray dotted lines. Different lines represent curves computed using varying proportions of data to assess convergence.*
+
+!!! note
+
+    Note that FEPA uses the [WHAM](http://membrane.urmc.rochester.edu/?page_id=126) package from Grossfield lab estimate the free energy from the COLVAR files and this will not work if WHAM is not in your PATH

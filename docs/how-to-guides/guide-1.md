@@ -5,7 +5,7 @@ title: Binding Pocket Resolvation Analysis
 
 Visualizing binding pocket resolvation across ABFE simulations is straightforward with FEPA. We follow a workflow similar to Tutorial 1, but instead of `SelfDistanceFeaturizer`, we use `BPWaterFeaturizer` to quantify water occupancy.
 
-### Load Config and Prepare Paths
+### 1. Load Config and Prepare Paths
 
 ```python
 import logging, os
@@ -35,7 +35,7 @@ path_dict = load_abfe_paths_for_compound(
 )
 ```
 
-### Load trajectories and featurize waters
+### 2. Load trajectories and featurize waters
 
 ```python
 from fepa.core.ensemble_handler import EnsembleHandler
@@ -53,7 +53,7 @@ logging.info("Saving features for compound %s ...", cmp)
 bp_water_featurizer.save_features(cmp_output_dir, overwrite=True)
 ```
 
-### Plot Water Occupancy Over Time or Windows
+### 3. Plot Water Occupancy Over Time or Windows
 
 ```python
 import pandas as pd
@@ -99,3 +99,7 @@ plt.savefig(os.path.join(cmp_output_dir, f"{cmp}_water_occupancy_across_windows.
 plt.close()
 
 ```
+
+![Binding-pocket water solvation across ABFE windows for all compounds in the OX2R Deflorian et al. Set 1 dataset.](image-1.png)
+
+**Figure 1.** Binding-pocket water solvation across ABFE windows for all compounds in the OX2R Deflorian et al. Set 1 dataset.

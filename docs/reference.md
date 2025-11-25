@@ -3,10 +3,9 @@ icon: lucide/book-open
 title: Reference
 ---
 
-This part of the project documentation focuses on
-an **information-oriented** approach. Use it as a
-reference for the technical implementation of the
-`calculator` project code.
+# 🚧 Reference
+
+Lorem Ipsum cause this page is under construction 🛠️👷
 
 ::: fepa.core.analyzers
 ::: fepa.core.dim_reducers

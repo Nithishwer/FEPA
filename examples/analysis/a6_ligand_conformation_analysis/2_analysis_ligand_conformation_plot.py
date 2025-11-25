@@ -46,25 +46,12 @@ def main():
         os.makedirs(analysis_output_dir)
 
     # Creating van_list and leg_window_list
-    # van_list = [i for i in range(1, 4)]
+    van_list = [i for i in range(1, 4)]
     leg_window_list = [f"coul.{i:02}" for i in range(0, 11)]
-    # [f"coul.{i:02}" for i in range(0, 11)]
-    # + [f"vdw.{i:02}" for i in range(0, 12)]
-    # + [f"rest.{i:02}" for i in range(0, 11)]
-    # )
-
-    # cmps_of_interest = ["48951", "47594", "49599", "52542", "47821", "46905", "48845"]
-
-    # Prepare paths
-    # path_dict = load_abfe_paths_for_compound(
-    #     config,
-    #     cmp="42922",
-    #     bp_selection_string="name CA and resid " + config["pocket_residues_string"],
-    #     van_list=van_list,
-    #     leg_window_list=leg_window_list,
-    #     apo=False,
-    # )
-
+    + [f"coul.{i:02}" for i in range(0, 11)] 
+    + [f"vdw.{i:02}" for i in range(0, 12)]
+    + [f"rest.{i:02}" for i in range(0, 11)]
+    
     for cmp in config["compounds"][:]:
         # Create cmp output path
         cmp_output_dir = os.path.join(analysis_output_dir, cmp)
@@ -113,51 +100,6 @@ def main():
         )
         plt.close()
 
-        # # Plot each ensemble
-        # clusters = cluster_df["cluster"].unique()
-        # colors = plt.cm.tab10.colors  # or use any colormap you like
-        # color_map = {
-        #     cluster: colors[i % len(colors)] for i, cluster in enumerate(clusters)
-        # }
-
-        # # Plot
-        # fig, ax = plt.subplots(figsize=(12, 3))
-
-        # for i in range(len(cluster_df) - 1):
-        #     start = cluster_df.iloc[i]["timestep"]
-        #     end = cluster_df.iloc[i + 1]["timestep"]
-        #     cluster = cluster_df.iloc[i]["cluster"]
-        #     ax.plot(
-        #         [start, end], [cluster, cluster], color=color_map[cluster], linewidth=5
-        #     )
-
-        # ax.set_xlabel("Timestep")
-        # ax.set_ylabel("Cluster")
-        # ax.set_title("Cluster over Time")
-        # ax.grid(True)
-
-        # # Optional: Create a legend
-        # handles = [
-        #     plt.Line2D(
-        #         [0], [0], color=color_map[cluster], lw=4, label=f"Cluster {cluster}"
-        #     )
-        #     for cluster in clusters
-        # ]
-        # ax.legend(
-        #     handles=handles,
-        #     title="Clusters",
-        #     bbox_to_anchor=(1.05, 1),
-        #     loc="upper left",
-        # )
-
-        # plt.tight_layout()
-        # plt.savefig(
-        #     os.path.join(
-        #         cmp_output_dir,
-        #         f"{cmp}_conformation_cluster_over_time.png",
-        #     )
-        # )
-        # plt.close()
 
 
 if __name__ == "__main__":

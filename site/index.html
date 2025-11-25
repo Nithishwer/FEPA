@@ -308,6 +308,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -522,6 +533,8 @@
       
         
       
+        
+      
     
     
     
@@ -627,6 +640,36 @@
 
               
             
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="how-to-guides/guide-3/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-compass" viewBox="0 0 24 24"><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Ligand conformations
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
           </ul>
         </nav>
       
@@ -660,6 +703,17 @@
       On this page
     </label>
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
       
         <li class="md-nav__item">
   <a href="#installation" class="md-nav__link">
@@ -696,11 +750,20 @@
                   
 
 <h1 id="getting-started-with-fepa">Getting Started with FEPA<a class="headerlink" href="#getting-started-with-fepa" title="Permanent link">&para;</a></h1>
-<p><strong>FEPA</strong> (Free Energy Perturbation Analysis) is a Python package for analyzing molecular dynamics (MD) trajectories from FEP simulations, particularly <strong>ABFEs</strong>. FEPA allows you to visualize conformational changes and set up simulations to correct free energy estimates.</p>
+<p><strong>FEPA</strong> (Free Energy Perturbation Analysis) is a Python package for analyzing molecular dynamics (MD) trajectories from FEP simulations, particularly <strong>ABFEs</strong>. FEPA allows you to identify and visualize conformational changes in the trajectories and set up simulations to correct free energy estimates.</p>
 <p>This guide covers installation, basic usage, and key workflows.</p>
 <hr />
+<h2 id="prerequisites">Prerequisites<a class="headerlink" href="#prerequisites" title="Permanent link">&para;</a></h2>
+<p>To make full use of FEPA's functionality, several additional programs are required:</p>
+<ul>
+<li><a href="https://www.gromacs.org/">GROMACS</a> – for analyzing MD trajectories</li>
+<li><a href="https://salilab.org/modeller/">MODELLER</a> – from the Sali Lab, used for building missing residues or homology modeling.</li>
+<li><a href="https://www.plumed.org/">PLUMED</a> – for enhanced sampling or collective variable analysis.</li>
+<li><a href="http://membrane.urmc.rochester.edu/?page_id=126">WHAM</a> – from Grossfield Lab, for estimating free energies from umbrella sampling or REUS simulations.</li>
+</ul>
+<p>Make sure these programs are installed and available in your system PATH so that FEPA can call them from Python.</p>
 <h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
-<p>FEPA is must be installed from GitHub:</p>
+<p>FEPA must be installed from GitHub:</p>
 <div class="language-bash highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Nithishwer/FEPA.git
 </span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="nb">cd</span><span class="w"> </span>FEPA
 </span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>pip<span class="w"> </span>install<span class="w"> </span>-e<span class="w"> </span>.

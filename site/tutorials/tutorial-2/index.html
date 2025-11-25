@@ -570,6 +570,8 @@
       
         
       
+        
+      
     
     
     
@@ -662,6 +664,36 @@
     
   
     Side chain torsions
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../how-to-guides/guide-3/" class="md-nav__link">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" class="lucide lucide-compass" viewBox="0 0 24 24"><path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z"/><circle cx="12" cy="12" r="10"/></svg>
+  
+  <span class="md-ellipsis">
+    
+  
+    Ligand conformations
   
 
     
@@ -981,6 +1013,10 @@ Note that $RESTRAINT_ARRAY is a placeholder for the harmonic restraint positions
 <p>This prepares and runs WHAM on the histograms and generates the free energy curves.</p>
 <p><img alt="Free Energy curves" src="../image-4.png" /></p>
 <p><em>Figure 1: Free energy curves from the tutorial simulations. The CV values of apo and holo structures are marked with gray dotted lines. Different lines represent curves computed using varying proportions of data to assess convergence.</em></p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Note that FEPA uses the <a href="http://membrane.urmc.rochester.edu/?page_id=126">WHAM</a> package from Grossfield lab estimate the free energy from the COLVAR files and this will not work if WHAM is not in your PATH</p>
+</div>
 
 
 
