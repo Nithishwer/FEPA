@@ -556,7 +556,7 @@ def run_wham_on_path(
     """
     # Build the command as a list
     command = [
-        "/biggin/b211/reub0138/Util/wham/wham-release-2.0.11/wham/wham/wham",
+        "wham",
         str(hist_min),
         str(hist_max),
         str(num_bins),
