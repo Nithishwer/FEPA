@@ -1,9 +1,10 @@
 import os
+import math
+from scipy.spatial.distance import jensenshannon
 import seaborn as sns
-import pandas as pd
+import numpy as np
 from matplotlib.lines import Line2D
 import matplotlib.pyplot as plt
-from fepa.utils.stat_utils import calculate_metrics
 
 
 def plot_exp_v_predicted(
@@ -139,3 +140,172 @@ def plot_exp_v_predicted(
         save_name, dpi=300, bbox_inches="tight"
     )  # Save the figure as a PNG file with high resolution
     plt.close()
+
+
+def plot_sidechain_distribution(
+    df, ensembles, output_file="ensemble_histograms.png", ncols=4, colorby="ensemble"
+):
+    """
+    Plots histograms for each column (excluding 'timestep' and the colorby column) in subplots,
+    colored by the ensemble, and saves the entire plot to one image file.
+
+    If exactly two ensembles are provided, columns are ordered by decreasing JS divergence.
+
+    Parameters:
+    - df: pandas DataFrame
+    - ensembles: list/tuple/set of ensemble names to include (should be length 2 for JS sorting)
+    - output_file: file path to save the combined plot
+    - ncols: number of columns in the subplot grid
+    - colorby: column name to color by (default is 'ensemble')
+    """
+    if not isinstance(ensembles, (list, tuple, set)):
+        raise ValueError("`ensembles` must be a list, tuple, or set of ensemble names")
+
+    ensembles = list(ensembles)
+    if len(ensembles) < 1:
+        raise ValueError("Must provide at least one ensemble")
+
+    filtered_df = df[df[colorby].isin(ensembles)].copy()
+    torsion_columns = [col for col in df.columns if "CHI" in col]
+
+    # Compute JS divergence if exactly two ensembles
+    if len(ensembles) == 2:
+        js_scores = {}
+        e1, e2 = ensembles
+        for col in torsion_columns:
+            # Drop NA
+            d1 = filtered_df[filtered_df[colorby] == e1][col].dropna()
+            d2 = filtered_df[filtered_df[colorby] == e2][col].dropna()
+
+            # Shared bin edges
+            min_val = min(d1.min(), d2.min())
+            max_val = max(d1.max(), d2.max())
+            bins = np.histogram_bin_edges(np.concatenate([d1, d2]), bins=30)
+
+            # Histogram densities
+            p1, _ = np.histogram(d1, bins=bins, density=True)
+            p2, _ = np.histogram(d2, bins=bins, density=True)
+
+            # Avoid 0s for JS divergence (add small constant)
+            p1 += 1e-12
+            p2 += 1e-12
+
+            p1 /= p1.sum()
+            p2 /= p2.sum()
+
+            js = jensenshannon(p1, p2, base=2.0)
+            js_scores[col] = js
+
+        # Sort columns by JS divergence
+        torsion_columns = sorted(
+            torsion_columns, key=lambda k: js_scores[k], reverse=True
+        )
+
+    n_plots = len(torsion_columns)
+    nrows = math.ceil(n_plots / ncols)
+
+    sns.set(style="whitegrid")
+    fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(4 * ncols, 3 * nrows))
+    axes = axes.flatten()
+
+    for idx, col in enumerate(torsion_columns):
+        ax = axes[idx]
+        sns.histplot(
+            data=filtered_df,
+            x=col,
+            hue=colorby,
+            kde=True,
+            stat="density",
+            common_norm=False,
+            bins=30,
+            ax=ax,
+        )
+        title = col
+        if len(ensembles) == 2:
+            title += f"{col}; \nJS={js_scores[col]:.3f}"
+        ax.set_title(title, fontsize=10)
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+
+    # Remove unused subplots
+    for i in range(n_plots, len(axes)):
+        fig.delaxes(axes[i])
+
+    plt.tight_layout()
+    plt.savefig(output_file, dpi=300)
+    plt.close()
+
+
+#!/usr/bin/env python3
+
+from matplotlib.cm import get_cmap
+
+
+def circular_spread(angles_deg):
+    """Compute circular spread = largest arc between points (max gap)."""
+    vals = angles_deg.dropna().values
+    if len(vals) < 2:
+        return 0
+    angles = np.deg2rad(vals)
+    angles = np.sort(angles)
+    gaps = np.diff(np.append(angles, angles[0] + 2 * np.pi))
+    return np.max(gaps)
+
+
+def plot_torsions_to_png(df, savedir="torsion_plots"):
+    os.makedirs(savedir, exist_ok=True)
+
+    chi_cols = [c for c in df.columns if c != "structure"]
+    spreads = {col: circular_spread(df[col]) for col in chi_cols}
+    chi_cols_sorted = sorted(chi_cols, key=lambda c: spreads[c], reverse=False)
+
+    structures = df["structure"].unique()
+    cmap = get_cmap("Set2")
+    color_map = {s: cmap(i % 20) for i, s in enumerate(structures)}
+
+    n_per_page = 25
+    page = 1
+
+    for i in range(0, len(chi_cols_sorted), n_per_page):
+        print(f"Processing page {page}...")
+        cols_this_page = chi_cols_sorted[i : i + n_per_page]
+
+        fig, axes = plt.subplots(5, 5, figsize=(12, 12))
+        axes = axes.flatten()
+
+        for ax, col in zip(axes, cols_this_page):
+            theta = np.linspace(0, 2 * np.pi, 500)
+            ax.plot(np.cos(theta), np.sin(theta), linestyle="--", linewidth=0.6)
+
+            for s in structures:
+                vals = df[df["structure"] == s][col].dropna()
+                ang = np.deg2rad(vals)
+                x, y = np.cos(ang), np.sin(ang)
+                ax.scatter(x, y, s=40, color=color_map[s], label=s)
+
+            ax.set_title(f"{col}\nspread={spreads[col]:.2f} rad", fontsize=8)
+            ax.set_aspect("equal")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            ax.axhline(0, color="grey", linewidth=0.4)
+            ax.axvline(0, color="grey", linewidth=0.4)
+
+        for ax in axes[len(cols_this_page) :]:
+            ax.axis("off")
+
+        handles = [
+            plt.Line2D(
+                [0], [0], marker="o", color=color_map[s], linestyle="", markersize=7
+            )
+            for s in structures
+        ]
+        fig.legend(
+            handles, structures, loc="upper center", ncol=min(len(structures), 6)
+        )
+
+        plt.tight_layout(rect=(0, 0, 1, 0.97))
+        outfile = os.path.join(savedir, f"torsions_page_{page:02d}.png")
+        plt.savefig(outfile, dpi=300)
+        print(f"✅ Saved {outfile}")
+        plt.close(fig)
+        page += 1

@@ -138,5 +138,5 @@ def remove_duplicate_headers_and_clean(input_path, output_path):
 
     with open(output_path, "w") as outfile:
         for i, line in enumerate(lines):
-            if i == 0 or ( not line.startswith("#") and len(line.split(' ')) == 2):
+            if i == 0 or (not line.startswith("#") and len(line.split(" ")) == 2):
                 outfile.write(line)

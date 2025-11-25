@@ -1,20 +1,15 @@
 import logging
 import os
 from fepa.core.dim_reducers import PCADimReducer
-from fepa.core.ensemble_handler import EnsembleHandler
 from fepa.core.featurizers import SelfDistanceFeaturizer
 from fepa.core.visualizers import (
     DimRedVisualizer,
     plot_eigenvalues,
-    compute_histograms,
-    plot_jsd_histograms,
     plot_entropy_heatmaps,
     plot_pca_components,
 )
 from fepa.utils.dimred_utils import cluster_pca
-import matplotlib.pyplot as plt
 import pandas as pd
-import seaborn as sns
 
 from fepa.utils.md_utils import (
     check_bp_residue_consistency,
@@ -194,9 +189,9 @@ class binding_pocket_analysis_workflow:
         ]
         ensembles_to_plot = (
             [
-                f"apo_1",
-                f"apo_2",
-                f"apo_3",
+                "apo_1",
+                "apo_2",
+                "apo_3",
                 f"{self.cmp}_nvt",
             ]
             + van1_abfe_windows

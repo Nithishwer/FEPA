@@ -4,6 +4,7 @@ import logging
 import MDAnalysis as mda
 from PyMEMENTO import MEMENTO
 
+
 def set_cys(in_resn, out_resn, indices, input_pdb, output_pdb):
     """
     Replace residue name in_resn with out_resn at specified residue indices in a PDB file.
@@ -15,9 +16,9 @@ def set_cys(in_resn, out_resn, indices, input_pdb, output_pdb):
         input_pdb (str): Path to the input PDB file.
         output_pdb (str): Path where the modified PDB file will be saved.
     """
-    with open(input_pdb, 'r') as infile, open(output_pdb, 'w') as outfile:
+    with open(input_pdb, "r") as infile, open(output_pdb, "w") as outfile:
         for line in infile:
-            if line.startswith(('ATOM', 'HETATM')):
+            if line.startswith(("ATOM", "HETATM")):
                 resn = line[17:20].strip()
                 resi = int(line[22:26])
                 if resn == in_resn and resi in indices:
@@ -30,7 +31,13 @@ def set_cys(in_resn, out_resn, indices, input_pdb, output_pdb):
                 outfile.write(line)
 
 
-def run_pymemento(last_run=None, template_path=None, protonation_states=None, n_residues=None, cyx_indices=None):
+def run_pymemento(
+    last_run=None,
+    template_path=None,
+    protonation_states=None,
+    n_residues=None,
+    cyx_indices=None,
+):
     if template_path is None:
         logging.error("Template path is not defined.")
         return
@@ -48,7 +55,7 @@ def run_pymemento(last_run=None, template_path=None, protonation_states=None, n_
         initial_gro,
         target_gro,
         list(
-            range(1, n_residues+1)
+            range(1, n_residues + 1)
         ),  # Should go from 1 to n+1 where n is the number of residues in the protein
         forcefield="Other",
         lipid="resname PA or resname PC or resname OL",
@@ -63,14 +70,20 @@ def run_pymemento(last_run=None, template_path=None, protonation_states=None, n_
     # Find best path and process models
     model.find_best_path(poolsize=1)  # Avoid multiprocessing due to memory bug
 
-    if cyx_indices!=None:
+    if cyx_indices != None:
         # Loop through best pdbs in modeller
         for i in range(24):
             # Best pdb path
-            best_path = os.path.join('wdir','modeller',f'morph{i}','best.pdb')
+            best_path = os.path.join("wdir", "modeller", f"morph{i}", "best.pdb")
             # call a function to set the cys in the given indices to cyx
-            shutil.copy(best_path,best_path.replace('.pdb','_og.pdb'))
-            set_cys(in_resn='CYS',out_resn='CYX',indices=cyx_indices,input_pdb = best_path.replace('.pdb','_og.pdb'), output_pdb = best_path)
+            shutil.copy(best_path, best_path.replace(".pdb", "_og.pdb"))
+            set_cys(
+                in_resn="CYS",
+                out_resn="CYX",
+                indices=cyx_indices,
+                input_pdb=best_path.replace(".pdb", "_og.pdb"),
+                output_pdb=best_path,
+            )
 
     model.process_models(
         caps=False,

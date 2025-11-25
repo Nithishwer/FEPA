@@ -3,7 +3,6 @@ import shutil
 import pandas as pd
 import logging
 import re
-import numpy as np
 import subprocess
 
 
@@ -44,7 +43,7 @@ class reus_umbrella_sampling_workflow:
         reus_folder_name="reus_v1",
         n_windows=24,
         plumed_resid_offset=None,
-        plumed_resid_break=None
+        plumed_resid_break=None,
     ):
         logging.info("Initializing reus_umbrella_sampling_workflow...")
         self.wdir_path = wdir_path
@@ -70,7 +69,8 @@ class reus_umbrella_sampling_workflow:
             job_template=self.submission_script_template_arr,
             n_windows=self.n_windows,
             plumed_resid_offset=self.plumed_resid_offset,
-            plumed_resid_break=self.plumed_resid_break,)
+            plumed_resid_break=self.plumed_resid_break,
+        )
 
     def prepare_wham(self, n_windows=24):
         # Create wham folder in reus path
@@ -228,13 +228,17 @@ class reus_umbrella_sampling_workflow:
         initial_gro_file = os.path.join(initial_folder, "initial.gro")
         target_gro_file = os.path.join(target_folder, "target.gro")
         # Copy the initial and final gro files to the respective folders
-        logging.info(f"Copying initial gro file ({self.initial_gro}) to {initial_gro_file}...")
+        logging.info(
+            f"Copying initial gro file ({self.initial_gro}) to {initial_gro_file}..."
+        )
         shutil.copy(self.initial_gro, initial_gro_file)
         # Copy the target gro file to the respective folder
-        logging.info(f"Copying target gro file ({self.target_gro}) to {target_gro_file}...")
+        logging.info(
+            f"Copying target gro file ({self.target_gro}) to {target_gro_file}..."
+        )
         shutil.copy(self.target_gro, target_gro_file)
         # Copy the plumed file to the respective folders
-        logging.info(f"Copying plumed files")
+        logging.info("Copying plumed files")
         shutil.copy(self.plumed_path, os.path.join(initial_folder, "plumed.dat"))
         shutil.copy(self.plumed_path, os.path.join(target_folder, "plumed.dat"))
 
@@ -244,13 +248,13 @@ class reus_umbrella_sampling_workflow:
                 self.plumed_path,
                 os.path.join(initial_folder, "plumed.dat"),
                 self.plumed_resid_offset,
-                self.plumed_resid_break
+                self.plumed_resid_break,
             )
             add_resid_offset_to_ca_indices(
                 self.plumed_path,
                 os.path.join(target_folder, "plumed.dat"),
                 self.plumed_resid_offset,
-                self.plumed_resid_break
+                self.plumed_resid_break,
             )
         # Replace the reference.pdb path in the plumed file
         logging.info("Replacing reference.pdb path in plumed file...")
