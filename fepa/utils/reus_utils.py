@@ -1,9 +1,5 @@
 import os
 import shutil
-import pandas as pd
-import logging
-import re
-import numpy as np
 import subprocess
 from fepa.utils.plumed_utils import add_resid_offset_to_ca_indices
 
@@ -38,7 +34,6 @@ def setup_reus(
             os.path.join(reus_path, "plumed.dat"),
             plumed_resid_offset,
             plumed_resid_break,
-
         )
     else:
         shutil.copy(plumed_path, os.path.join(reus_path, "plumed.dat"))

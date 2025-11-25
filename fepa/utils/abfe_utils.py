@@ -1,7 +1,3 @@
-import pandas as pd
-import numpy as np
-
-
 def average_over_vanilla(
     df, keep=["Lig_Name"], columns_to_average=["MBAR", "BAR", "TI"]
 ):

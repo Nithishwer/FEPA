@@ -8,11 +8,8 @@ import json
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional, Literal
 import pandas as pd
-import multiprocessing
 import numpy as np
 from MDAnalysis.topology.guessers import guess_atom_element
-from multiprocessing import Pool
-from functools import partial
 import MDAnalysis.analysis.hbonds
 from MDAnalysis.analysis import align, rms
 from pensa.features import (
@@ -27,7 +24,6 @@ from fepa.utils.water_utils import WaterOccupancyAnalysis
 from fepa.core.ensemble_handler import EnsembleHandler
 from MDAnalysis import transformations as trans
 from collections import defaultdict
-from typing import Literal
 from scipy.spatial import ConvexHull, Delaunay
 
 

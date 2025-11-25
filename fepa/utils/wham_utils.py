@@ -143,7 +143,9 @@ def analyse_us_hist(
             logging.info(f"Reading colvar path: {colvar_path}")
 
         logging.info(f"Removing duplicate headers in {colvar_path}")
-        remove_duplicate_headers_and_clean(input_path=colvar_path, output_path=colvar_path)
+        remove_duplicate_headers_and_clean(
+            input_path=colvar_path, output_path=colvar_path
+        )
 
         # Read the colvar file, skipping the first line with '#! FIELDS time CV'
         logging.info(f"Reading colvar data from {colvar_path}")
@@ -556,7 +558,7 @@ def run_wham_on_path(
     """
     # Build the command as a list
     command = [
-        "/biggin/b211/reub0138/Util/wham/wham-release-2.0.11/wham/wham/wham",
+        "wham",
         str(hist_min),
         str(hist_max),
         str(num_bins),

@@ -1,6 +1,7 @@
 """
 This module contains functions that help with dimensionality reduction and clustering.
 """
+
 from sklearn.decomposition import PCA
 import numpy as np
 import pandas as pd
@@ -36,6 +37,7 @@ def elbow_plot_pca(pca_projection_df, n_components=None, save_path=None):
         plt.savefig(save_path, bbox_inches="tight")
     plt.close()
 
+
 def calculate_pca(data, dim=None, random_state=42):
     """
     Performs a scikit-learn PCA on the provided data.
@@ -57,6 +59,7 @@ def calculate_pca(data, dim=None, random_state=42):
     pca = PCA(n_components=dim, random_state=random_state)
     pca.fit(data)
     return pca
+
 
 def cluster_pca(pca_projection_df, n_clusters, n_components=None):
     """

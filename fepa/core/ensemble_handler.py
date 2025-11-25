@@ -7,7 +7,6 @@ from typing import Dict
 import MDAnalysis as mda
 import MDAnalysis.transformations as trans
 import logging
-from MDAnalysis.analysis.hydrogenbonds.hbond_analysis import HydrogenBondAnalysis as HBA
 
 warnings.filterwarnings("ignore")  # Suppress MDAnalysis warnings
 

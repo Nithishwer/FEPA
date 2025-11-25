@@ -1,15 +1,11 @@
 import MDAnalysis as mda
-from MDAnalysis.tests.datafiles import PSF, DCD, GRO, XTC
-from MDAnalysis.coordinates.memory import MemoryReader
 import warnings
 from matplotlib import pyplot as plt
 import os
-from glob import glob
 from MDAnalysis.lib import distances
 from MDAnalysis.analysis import rms, align
 
 # first, import nglview
-import nglview as nv
 import seaborn as sns
 import numpy as np
 from sklearn.decomposition import PCA
@@ -23,9 +19,6 @@ from scipy.spatial.distance import jensenshannon
 
 # suppress some MDAnalysis warnings about PSF files
 warnings.filterwarnings("ignore")
-
-import MDAnalysis as mda
-from glob import glob
 
 
 class trajDimRed:
@@ -63,7 +56,7 @@ class trajDimRed:
         if saved == False:
             # Iterate over the dictionary and save only the c-alphas trajectories
             for key, u in universe_dict.items():
-                ag = u.select_atoms(f"protein and name CA and segid BP")
+                ag = u.select_atoms("protein and name CA and segid BP")
                 print(f"Writing protein trajectory for {key}")
                 ag.write(
                     f"protein_trajectories/{key}_bp_protein.pdb",
@@ -824,7 +817,7 @@ class trajDimRed:
         pdb_filename = subset_dir + variable + "_" + str(key) + "_" + method + ".pdb"
 
         if method == "pca":
-            ag = self.universe.select_atoms(f"protein")
+            ag = self.universe.select_atoms("protein")
             index = self.pca_df[variable] == key
             ag.write(pdb_filename, frames=self.universe.trajectory[:1])
             ag.write(xtc_filename, frames=self.universe.trajectory[index.values])
@@ -833,7 +826,7 @@ class trajDimRed:
             )
 
         if method == "tsne":
-            ag = self.universe.select_atoms(f"protein")
+            ag = self.universe.select_atoms("protein")
             index = self.tsne_df[variable] == key
             ag.write(pdb_filename, frames=self.universe.trajectory[:1])
             ag.write(xtc_filename, frames=self.universe.trajectory[index.values])
@@ -842,7 +835,7 @@ class trajDimRed:
             )
 
         if method == "umap":
-            ag = self.universe.select_atoms(f"protein")
+            ag = self.universe.select_atoms("protein")
             index = self.umap_df[variable] == key
             ag.write(pdb_filename, frames=self.universe.trajectory[:1])
             ag.write(xtc_filename, frames=self.universe.trajectory[index.values])
@@ -918,7 +911,7 @@ class trajDimRed:
         for resid in bp_offset_resids:
             plt.axvspan(resid + 0.1, resid + 0.9, color="grey", alpha=0.3)
         if ref == None:
-            plt.title(f"Root Mean Square Fluctuation (RMSF) Aligned to Average")
+            plt.title("Root Mean Square Fluctuation (RMSF) Aligned to Average")
         else:
             plt.title(
                 f"Root Mean Square Fluctuation (RMSF) Aligned to reference {ref.trajectory.filename}"
@@ -1023,14 +1016,14 @@ class trajDimRed:
                 xmax=upper_bound_u1,
                 color="blue",
                 alpha=0.25,
-                label=f"RMSF*a",
+                label="RMSF*a",
             )
             axes[i].axvspan(
                 xmin=lower_bound_u2,
                 xmax=upper_bound_u2,
                 color="red",
                 alpha=0.25,
-                label=f"RMSF*a",
+                label="RMSF*a",
             )
 
             # Plot histograms

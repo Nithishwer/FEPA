@@ -4,6 +4,7 @@ import MDAnalysis as mda
 from MDAnalysis.core.groups import AtomGroup
 from MDAnalysis.lib.distances import self_distance_array
 
+
 def compute_self_distances_with_transforms(
     tpr_path: str,
     xtc_path: str,

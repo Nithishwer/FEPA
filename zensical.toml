@@ -32,6 +32,7 @@ nav = [
     { "How-to-guides" = [
         { "Binding Pocket waters" = "how-to-guides/guide-1.md" },
         { "Side chain torsions" = "how-to-guides/guide-2.md" },
+        { "Ligand conformations" = "how-to-guides/guide-3.md" },
     ] },
 ]
 

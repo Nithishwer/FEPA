@@ -246,3 +246,4 @@ for _, row in ensemble_center_df.iterrows():
 
 ```
 
+The analysis in this tutorial can also be performed using FEPA’s workflow classes, which provide minimal-boilerplate interfaces for running standard ABFE analysis. These workflows reproduce the same binding pocket analysis shown here, but with far less user-written code. You can find ready-to-use workflow examples in the `fepa/examples` directory.

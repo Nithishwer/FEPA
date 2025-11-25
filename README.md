@@ -2,6 +2,10 @@
 # Getting Started with FEPA
 
 [![Tests](https://github.com/Nithishwer/FEPA/actions/workflows/test.yml/badge.svg)](https://github.com/Nithishwer/FEPA/actions/workflows/test.yml)
+![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)
+![Ruff](https://img.shields.io/badge/linting-ruff-blue)
+[![Docs](https://img.shields.io/badge/docs-zensical-blue)](https://nithishwer.github.io/FEPA/)
+
 
 
 **FEPA** (Free Energy Perturbation Analysis) is a Python package for analyzing molecular dynamics (MD) trajectories from FEP simulations, particularly **ABFEs**. FEPA allows you to visualize conformational changes and set up simulations to correct free energy estimates.
