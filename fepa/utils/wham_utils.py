@@ -558,7 +558,7 @@ def run_wham_on_path(
     """
     # Build the command as a list
     command = [
-        "wham",
+        "/biggin/b211/reub0138/Util/wham/wham-release-2.0.11/wham/wham/wham",
         str(hist_min),
         str(hist_max),
         str(num_bins),
@@ -685,6 +685,7 @@ def plot_free_combined(
         coor_values.extend(coor_values_i)
         if units == "kcal":
             free_values_i = [i * 0.239 for i in free_values_i]
+            error_values_i = [i * 0.239 for i in error_values_i]
         free_values.extend(free_values_i)
         error_values.extend(error_values_i)
         foldername = wham_path.split("/")[-1]
@@ -703,8 +704,8 @@ def plot_free_combined(
     df = pd.DataFrame(
         {
             "coor": coor_values,
-            "free": [i * 0.239 for i in free_values],
-            "error": [i * 0.239 for i in error_values],
+            "free": free_values,
+            "error": error_values,
             "category": category_values,
             "data_pct": data_pct_values,
         }
