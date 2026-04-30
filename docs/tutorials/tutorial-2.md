@@ -5,7 +5,7 @@ title: Setting up REUS
 
 # Setting up REUS
 
-In Tutorial 2, we build on the concepts learned in Tutorial 1, where the apo and holo states were shown to form distinct conformational clusters. Using the data provided in the [template], we will set up Replica Exchange Umbrella Sampling (REUS) simulations to estimate the free energy of the conformational transition from holo to apo, using the principal component (PC) 1 as the collective variable (CV). We will achieve this by morphing the protein from one state to another, equilibrating the system, and then running REUS to sample the transition.
+In Tutorial 2, we build on the concepts learned in Tutorial 1, where the apo and holo states were shown to form distinct conformational clusters. Using the data from the ABFE simulations, we will set up Replica Exchange Umbrella Sampling (REUS) simulations to estimate the free energy of the conformational transition from holo to apo, using the principal component (PC) 1 as the collective variable (CV). We will achieve this by morphing the protein from one state to another, equilibrating the system, and then running REUS to sample the transition.
 
 ## Preparing the plumed.dat file
 

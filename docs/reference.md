@@ -3,9 +3,7 @@ icon: lucide/book-open
 title: Reference
 ---
 
-# 🚧 Reference
-
-Lorem Ipsum cause this page is under construction 🛠️👷
+# Reference
 
 ::: fepa.core.analyzers
 ::: fepa.core.dim_reducers
